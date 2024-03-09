@@ -1,5 +1,5 @@
 module MicroCabal.Parse where
---import Control.Applicative
+import Control.Applicative
 import Control.Monad
 import Data.Char
 import Data.List
@@ -95,6 +95,7 @@ pIdent = do
 
 pKeyWordNC :: String -> P ()
 pKeyWordNC s = do
+  pSpaces
   i <- pIdent
   guard (s == lower i)
 
@@ -103,6 +104,9 @@ isIdent c = isAlphaNum c || c == '-' || c == '_' || c == '\'' || c == '.'
 
 pNumber :: P String
 pNumber = satisfySome "0..9" isDigit
+
+pParens :: P a -> P a
+pParens p = pStr "(" *> p <* pStr ")"
 
 pVersion :: P Version
 pVersion = pSpaces *> (Version <$> esepBy1 pNumber pDot)
@@ -113,7 +117,7 @@ pVersionRange = pVOr
     pVOr  = foldr1 VOr  <$> esepBy1 pVAnd (pStr "&&")
     pVAnd = foldr1 VAnd <$> esepBy1 pVOp  (pStr "||")
     pVOp  = (pVOper <*> (pSpaces *> pVersion))
-        <|< (pStr "(" *> pVersionRange <* pStr ")")
+        <|< pParens pVersionRange
         <|< (pStr "=="  *> pVEq)
         <|< (pStr "^>=" *> pVGEHat)
     pVEq  = (VEQSet <$> pVSet) <|< do
@@ -126,7 +130,7 @@ pVOper :: P (Version -> VersionRange)
 pVOper = pSpaces *> choice [ VGT <$ pStr ">", VGT <$ pStr "<", VGT <$ pStr "<=", VGT <$ pStr ">="]
 
 pStr :: String -> P ()
-pStr s = pWhite *> p s
+pStr s = pSpaces *> p s
   where p "" = pure ()
         p (c:cs) = pChar c *> p cs
 
@@ -222,8 +226,18 @@ pField = do
 --    traceM ("pField v=" ++ show v)
     pure $ Field fn v
 
-pCond :: P String
-pCond = satisfyMany (/= '\n')
+pCond :: P Cond
+pCond = pCor
+  where
+    pCor  = foldr1 Cor  <$> esepBy1 pCand (pStr "&&")
+    pCand = foldr1 Cand <$> esepBy1 pCnot (pStr "||")
+    pCnot = (Cnot <$> (pStr "!" *> pCnot)) <|> pCOp
+    pCOp  = (CBool <$> pBool)
+        <|< (pKeyWordNC "arch" *> pParens (Carch <$> pName))
+        <|< (pKeyWordNC "flag" *> pParens (Cflag <$> pName))
+        <|< (pKeyWordNC "impl" *> pParens (Cimpl <$> pName <*> optional pVersionRange))
+        <|< (pKeyWordNC "os"   *> pParens (Cos   <$> pName))
+        <|< pParens pCond
 
 pFreeText :: P Value
 pFreeText = do
@@ -234,7 +248,7 @@ pFieldName :: P FieldName
 pFieldName = pIdent
 
 pName :: P Name
-pName = pWhite *> pIdent
+pName = pSpaces *> pIdent
 
 pFields :: P [Field]
 pFields = pSpaces *> pNewLine *> emany pField

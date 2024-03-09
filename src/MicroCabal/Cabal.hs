@@ -24,7 +24,16 @@ data Field
   | If Cond [Field] [Field]
   deriving (Show)
 
-type Cond = String
+data Cond
+  = CBool Bool
+  | Cos Item
+  | Carch Item
+  | Cimpl Item (Maybe VersionRange)
+  | Cflag Item
+  | Cnot Cond
+  | Cand Cond Cond
+  | Cor  Cond Cond
+  deriving (Show)
 
 data Section
   = Common     Name [Field]
@@ -62,7 +71,7 @@ showCabal cbl =
 showField :: Field -> String
 showField (Field n v) = "  Field " ++ n ++ ": " ++ show v
 showField (If c t e) =
-  "  If " ++ c ++ "\n" ++
+  "  If " ++ show c ++ "\n" ++
   unlines (map (indent . showField) t) ++
   if null e then "" else
     "  Else\n" ++
