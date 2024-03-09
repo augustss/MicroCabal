@@ -9,11 +9,11 @@ main :: IO ()
 main = do
   args <- getArgs
   let fn = args !! 0
-  file <- readFile fn
-  let file' = dropComments file
+  rfile <- readFile fn
+  let file = dropComments rfile
       cbl :: Cabal
       cbl =
-        case runPrsr pTop (initLexState file') of
+        case runPrsr pTop (initLexState file) of
           Left (LastFail n ts msgs) -> error $ "\n" ++
             "  found:    " ++ (map show ts ++ ["EOF"]) !! 0 ++ "\n" ++
             "  expected: " ++ unwords (nub msgs) ++ "\n" ++

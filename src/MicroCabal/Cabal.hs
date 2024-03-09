@@ -15,6 +15,8 @@ data Value
   | VItem    Item
   | VBool    Bool
   | VVersion Version
+  | VRange   VersionRange
+  | VPkgs    [(Item, [Item], Maybe VersionRange)]
   deriving (Show)
 
 data Field

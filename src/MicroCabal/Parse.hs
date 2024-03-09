@@ -1,7 +1,8 @@
 module MicroCabal.Parse where
-import Control.Applicative
+--import Control.Applicative
 import Control.Monad
 import Data.Char
+import Data.List
 import Data.Maybe
 import Text.ParserComb
 import MicroCabal.Cabal
@@ -26,7 +27,8 @@ instance TokenMachine LexState Char where
   tmNextToken (LS i (_:ks) []) = (fieldSep, LS i ks [])
   tmNextToken (LS i [] (c:cs)) | c == '\n' = (c, LS     0 [] cs)
                                | otherwise = (c, LS (i+1) [] cs)
-  tmNextToken (LS i kks@(k:ks) (c:cs)) | c /= '\n' = (c, LS i kks cs)
+  tmNextToken (LS i kks@(k:ks) (c:cs)) | c /= '\n' = (c, LS (i+1) kks cs)
+                                       | Just cs' <- skipEmpty cs = tmNextToken (LS i kks cs')
                                        | otherwise =
     let lead 0     _             = ('\n', LS 0 kks cs)              -- There are at least k leading spaces
         lead j (x:xs) | x == ' ' = lead (j-1) xs                    -- Count spaces
@@ -34,14 +36,14 @@ instance TokenMachine LexState Char where
     in  lead (k+1) cs
   tmRawTokens (LS _ _ cs) = cs
 
-pushColumn :: P ()
-pushColumn = mapTokenState (\ (LS i ks cs) -> LS 0 (i:ks) cs)
+skipEmpty :: String -> Maybe String
+skipEmpty s =
+  case dropWhile (== ' ') s of
+    cs@('\n':_) -> Just cs
+    _ -> Nothing
 
-{-
-setCur :: LexState -> LexState
-setCur (LS i Nothing cs) = LS i (Just i) cs
-setCur _ = error "setCur"
--}
+pushColumn :: P ()
+pushColumn = mapTokenState (\ (LS i ks cs) -> LS i (i:ks) cs)
 
 lower :: String -> String
 lower = map toLower
@@ -124,12 +126,12 @@ pVOper :: P (Version -> VersionRange)
 pVOper = pSpaces *> choice [ VGT <$ pStr ">", VGT <$ pStr "<", VGT <$ pStr "<=", VGT <$ pStr ">="]
 
 pStr :: String -> P ()
-pStr s = pSpaces *> p s
+pStr s = pWhite *> p s
   where p "" = pure ()
         p (c:cs) = pChar c *> p cs
 
 pItem :: P Item
-pItem = pSpaces *> (pString <|< pWord)
+pItem = pWhite *> (pString <|< pWord)
 
 -- A string in quotation marks.
 pString :: P Item
@@ -153,17 +155,22 @@ pWord = satisfySome "word" (\ c -> c `notElem` [' ', '\n', ',', end, fieldSep])
 
 pCommaList :: P a -> P [a]
 pCommaList p = (pStr "," *> esepBy1 p (pStr ","))
-  <|< do
-    xs <- esepBy p (pStr ",")
-    when (not (null xs)) $
-      () <$ optional (pStr ",")
-    pure xs
+  <|< pCommaList' p
+
+pCommaList' :: P a -> P [a]
+pCommaList' p = esepBy p (pStr ",") <* eoptional (pStr ",")
 
 pSpaceList :: P a -> P [a]
 pSpaceList p = esepBy p pWhite
 
 pOptCommaList :: P a -> P [a]
-pOptCommaList p = pCommaList p <|< pSpaceList p
+pOptCommaList p = --pSpaceList p <|> pCommaList p
+    (pStr "," *> pCommaList' p)   -- it starts with a ',', so it must be comma separated
+  <|< do
+    a <- p  -- parse one item
+    -- now check if we have a comma or not, and pick the parser for the rest
+    as <- (pStr "," *> pCommaList' p) <|< pSpaceList p
+    return (a:as)
 
 pVComma :: P Value
 pVComma = VItems <$> pCommaList pItem
@@ -174,11 +181,24 @@ pVSpace = VItems <$> pSpaceList pItem
 pVOptComma :: P Value
 pVOptComma = VItems <$> pOptCommaList pItem
 
+pVLibs :: P Value
+pVLibs = VPkgs <$> pCommaList pPkg
+
+pPkg :: P (Item, [Item], Maybe VersionRange)
+pPkg = (,,) <$> pItem <*> (pSpaces *> pLibs) <*> optional pVersionRange
+  where
+    pLibs = do
+      pColon
+      ((:[]) <$> pItem) <|< (pStr "{" *> pCommaList pItem <* pStr "}")
+     <|<
+      pure []
+
 pField :: P Field
 pField = do
   pWhite
   pushColumn
   fn <- pFieldName
+--  traceM ("pFieldName fn=" ++ show fn)
   if lower fn == "if" then do
     c <- pCond
     pNewLine
@@ -199,6 +219,7 @@ pField = do
     let p = getParser fn
     v <- p
     pFieldSep
+--    traceM ("pField v=" ++ show v)
     pure $ Field fn v
 
 pCond :: P String
@@ -207,7 +228,7 @@ pCond = satisfyMany (/= '\n')
 pFreeText :: P Value
 pFreeText = do
   s <- satisfyMany (\ c -> c /= end && c /= fieldSep)
-  pure (VItem s)
+  pure $ VItem $ dropWhile (== ' ') s
 
 pFieldName :: P FieldName
 pFieldName = pIdent
@@ -223,14 +244,16 @@ pBool = (False <$ pKeyWordNC "false") <|< (True <$ pKeyWordNC "true")
 
 pSection :: P Section
 pSection = pWhite *> (
-      Common     <$> (pKeyWordNC "common"     *>          pName) <*> pFields
-  <|< Library    <$> (pKeyWordNC "library"    *> optional pName) <*> pFields
-  <|< Executable <$> (pKeyWordNC "executable" *>          pName) <*> pFields
-  <|< SourceRepo <$> (pKeyWordNC "source-repository" *>   pName) <*> pFields
+      Common     <$> (pKeyWordNC "common"     *>           pName) <*> pFields
+  <|< Library    <$> (pKeyWordNC "library"    *>  optional pName) <*> pFields
+  <|< Executable <$> (pKeyWordNC "executable" *>           pName) <*> pFields
+  <|< SourceRepo <$> (pKeyWordNC "source-repository" *>    pName) <*> pFields
       )
 
 getParser :: FieldName -> P Value
-getParser f = fromMaybe (error $ "Unknown field: " ++ f) $ lookup f parsers
+getParser f =
+  if "x-" `isPrefixOf` f then pFreeText else
+  fromMaybe (error $ "Unknown field: " ++ f) $ lookup f parsers
 
 parsers :: [(FieldName, P Value)]
 parsers =
@@ -238,7 +261,7 @@ parsers =
   , "asm-sources"                    # pVComma
   , "autogen-includes"               # pVOptComma
   , "autogen-modules"                # pVComma
-  , "build-depends"                  # pFreeText -- XXX
+  , "build-depends"                  # pVLibs
   , "build-tool-depends"             # pVComma -- XXX
   , "build-tools"                    # pVComma -- XXX
   , "buildable"                      # (VBool <$> pBool)
@@ -250,6 +273,7 @@ parsers =
   , "cxx-options"                    # pVComma
   , "default-extensions"             # pVOptComma
   , "default-language"               # (VItem <$> pItem)
+  , "exposed-modules"                # pVOptComma
   , "extensions"                     # pVOptComma
   , "extra-bundled-libraries"        # pVComma
   , "extra-dynamic-library-flavours" # pVComma
@@ -266,15 +290,17 @@ parsers =
   , "ghcjs-prof-options"             # pVSpace
   , "ghcjs-shared-options"           # pVSpace
   , "hs-source-dirs"                 # pVOptComma
+  , "import"                         # (VItem <$> pItem)
   , "include-dirs"                   # pVOptComma
   , "includes"                       # pVOptComma
   , "install-includes"               # pVOptComma
   , "js-sources"                     # pVComma
   , "ld-options"                     # pVSpace
   , "mixins"                         # pFreeText -- XXX
+  , "nhc98-options"                  # pVSpace
   , "other-extensions"               # pVOptComma
   , "other-languages"                # (VItem <$> pItem)
-  , "other-modules"                  # pVComma
+  , "other-modules"                  # pVOptComma
   , "pkg-config-depends"             # pVComma
   , "virtual-modules"                # pVComma
   --- library fields                 
@@ -283,29 +309,33 @@ parsers =
   , "author"                         # pFreeText
   , "bug-reports"                    # pFreeText
   , "build-type"                     # (VItem <$> pItem)
-  , "cabal-version"                  # (VVersion <$> pVersion)
+  , "cabal-version"                  # pFreeText -- (VRange <$> pVersionRange)
   , "category"                       # pFreeText
   , "copyright"                      # pFreeText
   , "data-dir"                       # pVSpace
   , "data-files"                     # pVComma
   , "description"                    # pFreeText
   , "extra-doc-files"                # pVComma
-  , "extra-source-files"             # pVComma
+  , "extra-source-files"             # pVOptComma
   , "extra-tmp-files"                # pVComma
   , "homepage"                       # pFreeText
   , "license"                        # pFreeText
   , "license-file"                   # pVOptComma
+  , "license-files"                  # pVOptComma
   , "maintainer"                     # pFreeText
   , "name"                           # (VItem <$> pItem)
   , "package-url"                    # pFreeText
   , "stability"                      # pFreeText
+  , "subdir"                         # pFreeText
   , "synopsis"                       # pFreeText
   , "tested-with"                    # pVOptComma
   , "version"                        # (VVersion <$> pVersion)
-  -- test suite  fields              
+  -- test suite fields              
   , "main-is"                        # (VItem <$> pItem)
   , "test-module"                    # (VItem <$> pItem)
   , "type"                           # (VItem <$> pItem)
+  -- source-repository fields
+  , "location"                       # pFreeText
   ]
   where (#) = (,)
   -- XXX use local fixity
