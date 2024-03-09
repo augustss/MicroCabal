@@ -11,11 +11,13 @@ cabal-dev
 .hpc
 .hsenv
 .cabal-sandbox/
+bin/
 cabal.sandbox.config
 *.prof
 *.aux
 *.hp
 *.eventlog
+*~
 .stack-work/
 cabal.project.local
 cabal.project.local~
