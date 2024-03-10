@@ -46,7 +46,14 @@ libName (Cabal (g@(Section _ _ gs):ss)) = Cabal $ g : map set ss
         name = head $ [ n | Field "name" (VItem n) <- gs ] ++ [error "no name field"]  
 
 reduce :: FlagInfo -> Cabal -> Cabal
-reduce info = mapField red
+reduce info c = reduce' (addFlags c) c
+  where addFlags (Cabal ss) = info{ flags = flags info ++ concatMap sect ss }
+        sect (Section "flag" n fs) = [(n, dflt n fs)]
+        sect _ = []
+        dflt n fs = head $ [ b | Field "default" (VBool b) <- fs ] ++ [error $ "no default for flag " ++ show n]
+
+reduce' :: FlagInfo -> Cabal -> Cabal
+reduce' info = mapField red
   where red (If c t e) | cond info c = concatMap red t
                        | otherwise   = concatMap red e
         red f = [f]

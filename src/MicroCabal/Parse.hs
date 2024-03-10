@@ -197,21 +197,22 @@ pVLibs :: P Value
 pVLibs = VPkgs <$> pCommaList pPkg
 
 pPkg :: P (Item, [Item], Maybe VersionRange)
-pPkg = (,,) <$> pItem <*> (pSpaces *> pLibs) <*> optional pVersionRange
+pPkg = (,,) <$> pNameW <*> (pSpaces *> pLibs) <*> optional pVersionRange
   where
     pLibs = do
       pColon
-      ((:[]) <$> pItem) <|< (pStr "{" *> pCommaList pItem <* pStr "}")
+      ((:[]) <$> pNameW) <|< (pStr "{" *> pCommaList pName <* pStr "}")
      <|<
       pure []
+    pNameW = pWhite *> pIdent
 
 pField :: P Field
 pField = do
   pWhite
   pushColumn
-  fn <- pFieldName
+  fn <- lower <$> pFieldName
 --  traceM ("pFieldName fn=" ++ show fn)
-  if lower fn == "if" then do
+  if fn == "if" then do
     c <- pCond
     pNewLine
     t <- emany pField
@@ -277,8 +278,7 @@ pSection = pWhite *> (
   where libName = pName <|< pure ""
 
 getParser :: FieldName -> P Value
-getParser af =
-  let f = lower af in
+getParser f =
   if "x-" `isPrefixOf` f then pFreeText else
   fromMaybe (error $ "Unknown field: " ++ f) $ lookup f parsers
 
