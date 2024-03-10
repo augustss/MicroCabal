@@ -4,10 +4,7 @@ module MicroCabal.Cabal where
 type FieldName = String
 type Name = String
 
-data Cabal = Cabal {
-  globalFields :: [Field],
-  sections     :: [Section]
-  }
+newtype Cabal = Cabal [Section]
   deriving (Show)
 
 data Value
@@ -35,12 +32,10 @@ data Cond
   | Cor  Cond Cond
   deriving (Show)
 
-data Section
-  = Common     Name [Field]
-  | Library    (Maybe Name) [Field]
-  | Executable Name [Field]
-  | SourceRepo Name [Field]
+data Section = Section SectionType Name [Field]
   deriving (Show)
+
+type SectionType = String
 
 newtype Version = Version [Int]
   deriving (Show)
@@ -70,11 +65,8 @@ data FlagInfo = FlagInfo
   deriving (Show)
 
 showCabal :: Cabal -> String
-showCabal cbl =
-  "Cabal\n" ++
-  "globalFields=\n" ++
-  unlines (map showField (globalFields cbl)) ++
-  unlines (map showSection (sections cbl))
+showCabal (Cabal sects) =
+  "Cabal\n" ++  unlines (map showSection sects)
 
 showField :: Field -> String
 showField (Field n v) = "  Field " ++ n ++ ": " ++ show v
@@ -89,7 +81,4 @@ indent :: String -> String
 indent s = "  " ++ concatMap (\ c -> if c == '\n' then "\n  " else [c]) s
 
 showSection :: Section -> String
-showSection (Common n fs) = unlines $ ("  Common " ++ n) : map (indent . showField) fs 
-showSection (Library n fs) = unlines $ ("  Library " ++ show n) : map (indent . showField) fs
-showSection (Executable n fs) = unlines $ ("  Executable " ++ n) : map (indent . showField) fs
-showSection (SourceRepo n fs) = unlines $ ("  SourceRepo " ++ n) : map (indent . showField) fs
+showSection (Section s n fs) = unlines $ ("  " ++ s ++ " " ++ n) : map (indent . showField) fs 

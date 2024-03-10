@@ -28,7 +28,7 @@ instance TokenMachine LexState Char where
   tmNextToken (LS i [] (c:cs)) | c == '\n' = (c, LS     0 [] cs)
                                | otherwise = (c, LS (i+1) [] cs)
   tmNextToken (LS i kks@(k:ks) (c:cs)) | c /= '\n' = (c, LS (i+1) kks cs)
---                                       | Just cs' <- skipEmpty cs = tmNextToken (LS i kks cs')
+                                       | Just cs' <- skipEmpty cs = tmNextToken (LS i kks cs')
                                        | otherwise =
     let lead 0     _             =
 --          trace ("Just NL kks=" ++ show kks ++ " cs=" ++ show (take 10 cs))
@@ -68,7 +68,7 @@ pTop :: P Cabal
 pTop = pCabal <* pWhite <* pChar end
 
 pCabal :: P Cabal
-pCabal = Cabal <$> emany pField <*> emany pSection
+pCabal = Cabal <$> ((:) <$> (Section "global" "" <$> emany pField) <*> emany pSection)
 
 pColon :: P ()
 pColon = pWhite <* pChar ':'
@@ -97,11 +97,12 @@ pIdent = do
   cs <- satisfyMany isIdent
   pure (c:cs)
 
-pKeyWordNC :: String -> P ()
+pKeyWordNC :: String -> P String
 pKeyWordNC s = do
   pSpaces
   i <- pIdent
   guard (s == lower i)
+  pure s
 
 isIdent :: Char -> Bool
 isIdent c = isAlphaNum c || c == '-' || c == '_' || c == '\'' || c == '.'
@@ -161,12 +162,15 @@ pString = do
 pWord :: P Item
 pWord = satisfySome "word" (\ c -> c `notElem` [' ', '\n', ',', end, fieldSep])
 
+pComma :: P ()
+pComma = pWhite *> pChar ','
+
 pCommaList :: P a -> P [a]
-pCommaList p = (pStr "," *> esepBy1 p (pStr ","))
+pCommaList p = (pStr "," *> esepBy1 p pComma)
   <|< pCommaList' p
 
 pCommaList' :: P a -> P [a]
-pCommaList' p = esepBy p (pStr ",") <* eoptional (pStr ",")
+pCommaList' p = esepBy p pComma <* eoptional (pStr ",")
 
 pSpaceList :: P a -> P [a]
 pSpaceList p = esepBy p pWhite
@@ -215,7 +219,7 @@ pField = do
     e <- do
       pWhite
       pushColumn
-      pKeyWordNC "else"
+      _ <- pKeyWordNC "else"
       fs <- emany pField
       pFieldSep
       pure fs
@@ -245,8 +249,10 @@ pCond = pCor
 
 pFreeText :: P Value
 pFreeText = do
-  s <- satisfyMany (\ c -> c /= end && c /= fieldSep)
-  pure $ VItem $ dropWhile (== ' ') s
+  txt <- satisfyMany (\ c -> c /= end && c /= fieldSep)
+  let dot "." = ""  -- Single '.' used to make an empty line
+      dot s   = s
+  pure $ VItem $ unlines . map (dot . dropWhile (== ' ')) . lines $ txt
 
 pFieldName :: P FieldName
 pFieldName = pIdent
@@ -262,14 +268,17 @@ pBool = (False <$ pKeyWordNC "false") <|< (True <$ pKeyWordNC "true")
 
 pSection :: P Section
 pSection = pWhite *> (
-      Common     <$> (pKeyWordNC "common"     *>           pName) <*> pFields
-  <|< Library    <$> (pKeyWordNC "library"    *>  optional pName) <*> pFields
-  <|< Executable <$> (pKeyWordNC "executable" *>           pName) <*> pFields
-  <|< SourceRepo <$> (pKeyWordNC "source-repository" *>    pName) <*> pFields
-      )
+      Section <$> pKeyWordNC "common"     <*>           pName <*> pFields
+  <|< Section <$> pKeyWordNC "library"    <*>         libName <*> pFields
+  <|< Section <$> pKeyWordNC "executable" <*>           pName <*> pFields
+  <|< Section <$> pKeyWordNC "source-repository" <*>    pName <*> pFields
+  <|< Section <$> pKeyWordNC "flag"              <*>    pName <*> pFields
+  )
+  where libName = pName <|< pure ""
 
 getParser :: FieldName -> P Value
-getParser f =
+getParser af =
+  let f = lower af in
   if "x-" `isPrefixOf` f then pFreeText else
   fromMaybe (error $ "Unknown field: " ++ f) $ lookup f parsers
 
@@ -354,6 +363,9 @@ parsers =
   , "type"                           # (VItem <$> pItem)
   -- source-repository fields
   , "location"                       # pFreeText
+  -- flag fields
+  , "manual"                         # (VBool <$> pBool)
+  , "default"                        # (VBool <$> pBool)
   ]
   where (#) = (,)
   -- XXX use local fixity
