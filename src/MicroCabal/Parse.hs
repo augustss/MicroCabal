@@ -17,7 +17,7 @@ initLexState :: [Char] -> LexState
 initLexState cs = LS 0 [] cs
 
 end :: Char
-end = '\NUL'
+end = '\EOT'
 fieldSep :: Char
 fieldSep = '\FS'
 
@@ -28,11 +28,15 @@ instance TokenMachine LexState Char where
   tmNextToken (LS i [] (c:cs)) | c == '\n' = (c, LS     0 [] cs)
                                | otherwise = (c, LS (i+1) [] cs)
   tmNextToken (LS i kks@(k:ks) (c:cs)) | c /= '\n' = (c, LS (i+1) kks cs)
-                                       | Just cs' <- skipEmpty cs = tmNextToken (LS i kks cs')
+--                                       | Just cs' <- skipEmpty cs = tmNextToken (LS i kks cs')
                                        | otherwise =
-    let lead 0     _             = ('\n', LS 0 kks cs)              -- There are at least k leading spaces
+    let lead 0     _             =
+--          trace ("Just NL kks=" ++ show kks ++ " cs=" ++ show (take 10 cs))
+          ('\n', LS 0 kks cs)              -- There are at least k leading spaces
         lead j (x:xs) | x == ' ' = lead (j-1) xs                    -- Count spaces
-        lead _     _             = (fieldSep, LS 0 ks cs)                 -- Fewer than k spaces.  Generate FS, pop, and try again.
+        lead _     _             =
+--          trace ("insert FS kks=" ++ show kks ++ " cs=" ++ show (take 10 cs))
+          (fieldSep, LS 0 ks (c:cs))                 -- Fewer than k spaces.  Generate FS, pop, and try again.
     in  lead (k+1) cs
   tmRawTokens (LS _ _ cs) = cs
 
@@ -102,8 +106,8 @@ pKeyWordNC s = do
 isIdent :: Char -> Bool
 isIdent c = isAlphaNum c || c == '-' || c == '_' || c == '\'' || c == '.'
 
-pNumber :: P String
-pNumber = satisfySome "0..9" isDigit
+pNumber :: P Int
+pNumber = read <$> satisfySome "0..9" isDigit
 
 pParens :: P a -> P a
 pParens p = pStr "(" *> p <* pStr ")"

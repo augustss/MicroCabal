@@ -42,7 +42,7 @@ data Section
   | SourceRepo Name [Field]
   deriving (Show)
 
-newtype Version = Version [String]
+newtype Version = Version [Int]
   deriving (Show)
 
 data VersionRange
@@ -60,6 +60,14 @@ data VersionRange
   deriving (Show)
 
 type Item = String
+
+data FlagInfo = FlagInfo
+  { os    :: String
+  , arch  :: String
+  , impl  :: (String, Version)
+  , flags :: [(Name, Bool)]
+  }
+  deriving (Show)
 
 showCabal :: Cabal -> String
 showCabal cbl =
