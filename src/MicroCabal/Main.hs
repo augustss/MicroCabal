@@ -1,6 +1,7 @@
 module MicroCabal.Main where
 import Data.List
 import System.Environment
+import qualified System.Info as I
 import MicroCabal.Cabal
 import MicroCabal.Normalize
 import MicroCabal.Parse
@@ -23,7 +24,7 @@ main = do
             "  at: " ++ show (drop (length file - n) file)
           Right (a:_) -> a
           Right []    -> undefined -- impossible
-  let info = FlagInfo { os = "unix", arch = "x86_64", flags = [], impl = ("ghc", Version [9,4]) }
+  let info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
       ncbl = normalize info cbl
   putStrLn $ showCabal cbl
   putStrLn $ showCabal ncbl

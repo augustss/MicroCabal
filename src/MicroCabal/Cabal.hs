@@ -1,4 +1,18 @@
-module MicroCabal.Cabal where
+module MicroCabal.Cabal(
+  Version(..), makeVersion,
+  FieldName, Name,
+  Cabal(..),
+  Value(..),
+  Field(..),
+  Cond(..),
+  Section(..),
+  SectionType,
+  VersionRange(..),
+  Item,
+  FlagInfo(..),
+  showCabal,
+  ) where
+import Data.Version
 
 --type ExecName = String
 type FieldName = String
@@ -36,9 +50,6 @@ data Section = Section SectionType Name [Field]
   deriving (Show)
 
 type SectionType = String
-
-newtype Version = Version [Int]
-  deriving (Show)
 
 data VersionRange
   = VEQ Version

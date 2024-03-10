@@ -1,4 +1,8 @@
-module MicroCabal.Parse where
+module MicroCabal.Parse(
+  pTop,
+  initLexState,
+  dropComments,
+  ) where
 import Control.Applicative
 import Control.Monad
 import Data.Char
@@ -6,7 +10,7 @@ import Data.List
 import Data.Maybe
 import Text.ParserComb
 import MicroCabal.Cabal
-import Debug.Trace
+--import Debug.Trace
 
 type P a = Prsr LexState Char a
 
@@ -114,7 +118,7 @@ pParens :: P a -> P a
 pParens p = pStr "(" *> p <* pStr ")"
 
 pVersion :: P Version
-pVersion = pSpaces *> (Version <$> esepBy1 pNumber pDot)
+pVersion = pSpaces *> (makeVersion <$> esepBy1 pNumber pDot)
 
 pVersionRange :: P VersionRange
 pVersionRange = pVOr
