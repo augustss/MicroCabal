@@ -143,6 +143,9 @@ pStr s = pSpaces *> p s
   where p "" = pure ()
         p (c:cs) = pChar c *> p cs
 
+pStrW :: String -> P ()
+pStrW s = pWhite *> pStr s
+
 pItem :: P Item
 pItem = pWhite *> (pString <|< pWord)
 
@@ -181,11 +184,11 @@ pSpaceList p = esepBy p pWhite
 
 pOptCommaList :: P a -> P [a]
 pOptCommaList p = --pSpaceList p <|> pCommaList p
-    (pStr "," *> pCommaList' p)   -- it starts with a ',', so it must be comma separated
+    (pStrW "," *> pCommaList' p)   -- it starts with a ',', so it must be comma separated
   <|< do
     a <- p  -- parse one item
     -- now check if we have a comma or not, and pick the parser for the rest
-    as <- (pStr "," *> pCommaList' p) <|< pSpaceList p
+    as <- (pStrW "," *> pCommaList' p) <|< pSpaceList p
     return (a:as)
 
 pVComma :: P Value
@@ -278,6 +281,7 @@ pSection = pWhite *> (
   <|< Section <$> pKeyWordNC "executable" <*>           pName <*> pFields
   <|< Section <$> pKeyWordNC "source-repository" <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "flag"              <*>    pName <*> pFields
+  <|< Section <$> pKeyWordNC "test-suite"        <*>    pName <*> pFields
   )
   where libName = pName <|< pure ""
 
