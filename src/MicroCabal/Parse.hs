@@ -1,5 +1,6 @@
 module MicroCabal.Parse(
   parseCabal,
+  parseYAML,
   ) where
 import Control.Applicative
 import Control.Monad
@@ -8,10 +9,14 @@ import Data.List
 import Data.Maybe
 import Text.ParserComb
 import MicroCabal.Cabal
+import MicroCabal.YAML
 --import Debug.Trace
 
 parseCabal :: FilePath -> String -> Cabal
 parseCabal fn rfile = runP pCabalTop fn $ dropCabalComments rfile
+
+parseYAML :: FilePath -> String -> YAMLValue
+parseYAML fn rfile = runP pYAMLTop fn $ dropYAMLComments rfile
 
 runP :: P a -> FilePath -> String -> a
 runP prsr fn file =
@@ -20,9 +25,9 @@ runP prsr fn file =
       "  found:    " ++ (map show ts ++ ["EOF"]) !! 0 ++ "\n" ++
       "  expected: " ++ unwords (nub msgs) ++ "\n" ++
 --      "  n=" ++ show n ++ "\n" ++
-      "  file: " ++ show fn ++
+      "  file: " ++ show fn ++ "\n" ++
       "  line: " ++ show (1 + length (filter (== '\n') (take (length file - n) file))) ++ "\n" ++
-      "  at: " ++ show (drop (length file - n) file)
+      "  at: " ++ show (take 100 (drop (length file - n) file))
     Right (a:_) -> a
     Right []    -> undefined -- impossible
 
@@ -167,7 +172,7 @@ pItem :: P Item
 pItem = pWhite *> (pString <|< pWord)
 
 -- A string in quotation marks.
-pString :: P Item
+pString :: P String
 pString = do
   pChar '"'
   let achar = satisfy "char" (\ c -> c /= '\n' && c /= end && c /= fieldSep)
@@ -396,3 +401,46 @@ parsers =
   -- XXX use local fixity
   
   
+----------------------------------------------------------------------
+
+-- XXX Wrong for strings
+dropYAMLComments :: String -> String
+dropYAMLComments [] = []
+dropYAMLComments (c:cs) | c == '#' = dropYAMLComments (dropWhile (/= '\n') cs)
+                        | otherwise = c : dropYAMLComments cs
+
+pYAMLTop :: P YAMLValue
+pYAMLTop = pYAMLRecord <* pWhite <* pChar end
+
+pYAMLValue :: P YAMLValue
+pYAMLValue =
+      (YBool   <$> pBool)
+  <|< (YInt    <$> pNumber)
+--  <|< (YString <$> pString)
+  <|< (YString <$> pYAMLFree)
+  <|< pYAMLArray
+  <|< pYAMLRecord
+
+pYAMLArray :: P YAMLValue
+pYAMLArray = YArray <$> (pWhite *> pFieldSep *> esome pElem)
+  where
+    pElem = pChar '-' *> pWhite *> pYAMLValue
+
+pYAMLRecord :: P YAMLValue
+pYAMLRecord = YRecord <$> esome pYAMLField
+
+pYAMLFree :: P String
+pYAMLFree = do
+  pSpaces
+  txt <- satisfyMany (\ c -> c /= end && c /= fieldSep)
+  pure txt
+
+pYAMLField :: P (YAMLFieldName, YAMLValue)
+pYAMLField = do
+  pWhite
+  pushColumn
+  n <- pFieldName
+  pColon
+  v <- pYAMLValue
+  pFieldSep
+  pure (n, v)
