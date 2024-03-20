@@ -1,7 +1,5 @@
 module MicroCabal.Parse(
-  pTop,
-  initLexState,
-  dropComments,
+  parseCabal,
   ) where
 import Control.Applicative
 import Control.Monad
@@ -11,6 +9,25 @@ import Data.Maybe
 import Text.ParserComb
 import MicroCabal.Cabal
 --import Debug.Trace
+
+parseCabal :: FilePath -> String -> Cabal
+parseCabal fn rfile = runP pCabalTop fn $ dropCabalComments rfile
+
+runP :: P a -> FilePath -> String -> a
+runP prsr fn file =
+  case runPrsr prsr (initLexState file) of
+    Left (LastFail n ts msgs) -> error $ "\n" ++
+      "  found:    " ++ (map show ts ++ ["EOF"]) !! 0 ++ "\n" ++
+      "  expected: " ++ unwords (nub msgs) ++ "\n" ++
+--      "  n=" ++ show n ++ "\n" ++
+      "  file: " ++ show fn ++
+      "  line: " ++ show (1 + length (filter (== '\n') (take (length file - n) file))) ++ "\n" ++
+      "  at: " ++ show (drop (length file - n) file)
+    Right (a:_) -> a
+    Right []    -> undefined -- impossible
+
+
+------------------------------
 
 type P a = Prsr LexState Char a
 
@@ -57,8 +74,8 @@ lower :: String -> String
 lower = map toLower
 
 -- Change lines with first non-space being '--' into just a newline
-dropComments :: String -> String
-dropComments = unlines . map cmt . lines
+dropCabalComments :: String -> String
+dropCabalComments = unlines . map cmt . lines
   where
     cmt s | take 2 (dropWhile (== ' ') s) == "--" = ""
           | otherwise = s
@@ -68,8 +85,8 @@ satisfySome msg p = (:) <$> satisfy msg p <*> satisfyMany p
 
 ----------------------------------------------------------------
 
-pTop :: P Cabal
-pTop = pCabal <* pWhite <* pChar end
+pCabalTop :: P Cabal
+pCabalTop = pCabal <* pWhite <* pChar end
 
 pCabal :: P Cabal
 pCabal = Cabal <$> ((:) <$> (Section "global" "" <$> emany pField) <*> emany pSection)
