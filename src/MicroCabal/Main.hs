@@ -1,6 +1,9 @@
 module MicroCabal.Main where
+import Control.Monad
+import Data.List
 import System.Environment
 import qualified System.Info as I
+import Text.Read
 import MicroCabal.Cabal
 import MicroCabal.Env
 import MicroCabal.Normalize
@@ -58,24 +61,58 @@ usage = putStrLn "\
 
 -----------------------------------------
 
+-- Package list
+packageListName :: FilePath
+packageListName = "packages.txt"
+
+-- Local name for snapshot list
+snapshotsName :: FilePath
+snapshotsName = "snapshots.json"
+
+-- Local name for snapshot
+snapshotName :: FilePath
+snapshotName = "snapshot.yaml"
+
+-- This is a JSON document describing enumerating all releases.
+stackageSourceList :: URL
+stackageSourceList = URL "https://www.stackage.org/download/snapshots.json"
+
+snapshotSource :: String
+snapshotSource = "https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/" -- lts/22/13.yaml
+
 -- XX This needs improvement
 getBestStackage :: Env -> IO URL
-getBestStackage _ = return $ URL "https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/22/13.yaml"
-
-stackageName :: FilePath
-stackageName = "stackage.yaml"
+getBestStackage env = do
+  -- Get source list
+  let dir = cabalDir env
+      fsnaps = dir ++ "/" ++ snapshotsName
+  wget env stackageSourceList fsnaps
+  file <- readFile fsnaps
+  let snaps = parseSnapshots fsnaps file
+      snap = snd $ last $
+             [(0::Int, error "no lts snapshots found")] ++
+             sort [ (l, r) | (lp, r) <- snaps, Just l <- [stripPrefix "lts-" lp >>= readMaybe] ]
+      snap' = map (\ c -> if c == '-' || c == '.' then '/' else c) snap
+  when (verbose env > 0) $
+    putStrLn $ "Picking Stackage snapshot " ++ snap
+  return $ URL $ snapshotSource ++ snap' ++ ".yaml"
 
 cmdUpgrade :: Env -> [String] -> IO ()
 cmdUpgrade env _args = do
   let dir = cabalDir env
-      stk = dir ++ "/" ++ stackageName
+      stk = dir ++ "/" ++ snapshotName
+      fpkgs = dir ++ "/" ++ packageListName
   mkdir env dir
   url <- getBestStackage env
   wget env url stk
   file <- readFile stk
   let yml = parseYAML stk file
-  putStrLn $ showYAML yml
-  putStrLn $ show $ yamlToStackageList yml
+      pkgs = yamlToStackageList yml
+--  putStrLn $ showYAML yml
+--  putStrLn $ show pkgs
+  when (verbose env > 0) $
+    putStrLn $ "Write package list to " ++ fpkgs
+  writeFile fpkgs $ unlines $ map showPackage pkgs
 
 cmdTest :: Env -> [String] -> IO ()
 cmdTest _ _ = do

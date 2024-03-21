@@ -1,6 +1,7 @@
 module MicroCabal.Parse(
   parseCabal,
   parseYAML,
+  parseSnapshots,
   ) where
 import Control.Applicative
 import Control.Monad
@@ -17,6 +18,9 @@ parseCabal fn rfile = runP pCabalTop fn $ dropCabalComments rfile
 
 parseYAML :: FilePath -> String -> YAMLValue
 parseYAML fn rfile = runP pYAMLTop fn $ dropYAMLComments rfile
+
+parseSnapshots :: FilePath -> String -> [(String, String)]
+parseSnapshots fn rfile = runP pSnapshotsTop fn rfile
 
 runP :: P a -> FilePath -> String -> a
 runP prsr fn file =
@@ -459,3 +463,16 @@ pYAMLField = do
   v <- pYAMLValue
   pFieldSep
   pure (n, v)
+
+----------------------------------------------------------------------
+
+type Snapshot = (String, String)
+
+pSnapshotsTop :: P [Snapshot]
+pSnapshotsTop = pSnapshots <* pWhite <* pChar end
+
+pSnapshots :: P [Snapshot]
+pSnapshots = pWhite *> pChar '{' *> (esepBy pSnapshot (pWhite *> pChar ',')) <* pWhite <* pChar '}'
+
+pSnapshot :: P Snapshot
+pSnapshot = (,) <$> (pWhite *> pString) <*> (pWhite *> pChar ':' *> pWhite *> pString)
