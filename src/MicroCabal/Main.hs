@@ -1,7 +1,10 @@
 module MicroCabal.Main where
 import Control.Monad
 import Data.List
+import Data.Maybe
+import Data.Version
 import System.Environment
+import System.Directory
 import qualified System.Info as I
 import Text.Read
 import MicroCabal.Cabal
@@ -19,6 +22,7 @@ main = do
   case args of
     [] -> usage
     "build"   : as -> cmdBuild   env as
+    "fetch"   : as -> cmdFetch   env as
     "install" : as -> cmdInstall env as
     "upgrade" : as -> cmdUpgrade env as
     "test"    : as -> cmdTest    env as
@@ -48,16 +52,20 @@ setupEnv = do
 decodeCommonArgs :: Env -> IO (Env, [String])
 decodeCommonArgs env = do
   let loop e ("-v" : as) = loop e{ verbose = verbose e + 1 } as
+      loop e ("-q" : as) = loop e{ verbose = -1 } as
       loop e as = return (e, as)
   loop env =<< getArgs
 
 usage :: IO ()
-usage = putStrLn "\
+usage = do
+  putStrLn "\
 \Usage:\n\
-\  mcabal [-v] upgrade\n\
 \  mcabal [-v] build\n\
+\  mcabal [-v] fetch PKG\n\
 \  mcabal [-v] install\n\
+\  mcabal [-v] upgrade\n\
 \"
+  error "done"
 
 -----------------------------------------
 
@@ -99,6 +107,8 @@ getBestStackage env = do
 
 cmdUpgrade :: Env -> [String] -> IO ()
 cmdUpgrade env _args = do
+  when (verbose env >= 0) $
+    putStrLn "Retrieving Stackage package list"
   let dir = cabalDir env
       stk = dir ++ "/" ++ snapshotName
       fpkgs = dir ++ "/" ++ packageListName
@@ -121,6 +131,43 @@ cmdTest _ _ = do
   let yml = parseYAML stk file
   putStrLn $ showYAML yml
 
+
+-----------------------------------------
+
+getPackageList :: Env -> IO [StackagePackage]
+getPackageList env = do
+  let dir = cabalDir env
+      fpkgs = dir ++ "/" ++ packageListName
+  b <- doesFileExist fpkgs
+  when (not b) $ do
+    when (verbose env >= 0) $
+      putStrLn "No package list, running 'upgrade' command"
+    cmdUpgrade env []
+  map readPackage . lines <$> readFile fpkgs
+
+getPackageInfo :: Env -> PackageName -> IO StackagePackage
+getPackageInfo env pkg = do
+  pkgs <- getPackageList env
+  return $ fromMaybe (error $ "getPackageInfo: no package " ++ pkg) $ listToMaybe $ filter ((== pkg) . stName) pkgs
+
+cmdFetch :: Env -> [String] -> IO ()
+cmdFetch env [pkg] = do
+  let dir = cabalDir env ++ "/packages"
+  st <- getPackageInfo env pkg
+  let pkgs = stName st ++ "-" ++ showVersion (stVersion st)
+      url  = URL $ "https://hackage.haskell.org/package/" ++ pkgs ++ "/" ++ pkgz
+      pkgz = pkgs ++ ".tar.gz"
+      file = dir ++ "/" ++ pkgz
+  b <- doesFileExist file
+  when (not b) $ do
+    mkdir env dir
+    when (verbose env > 0) $
+      putStrLn $ "Fetching  " ++ pkgz
+    wget env url file
+    when (verbose env > 0) $
+      putStrLn $ "Unpacking " ++ pkgz
+    tarx env dir file
+cmdFetch _ _ = usage
 
 -----------------------------------------
 

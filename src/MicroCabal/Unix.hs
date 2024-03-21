@@ -1,6 +1,7 @@
 module MicroCabal.Unix(
   mkdir,
   wget, URL(..),
+  tarx,
   ) where
 import Control.Monad
 import System.Process
@@ -21,3 +22,7 @@ mkdir env d = cmd env $ "mkdir -p " ++ d
 -- Get a document, store it in a file.
 wget :: Env -> URL -> FilePath -> IO ()
 wget env (URL url) fn = cmd env $ "wget --quiet --output-document=" ++ fn ++ " " ++ url
+
+-- Extract a tar file
+tarx :: Env -> FilePath -> FilePath -> IO ()
+tarx env dir file = cmd env $ "tar -C " ++ dir ++ " -x -f " ++ file

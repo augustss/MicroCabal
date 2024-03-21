@@ -1,7 +1,9 @@
 module MicroCabal.StackageList(
   StackageList,
   StackagePackage(..),
+  PackageName, FlagName,
   showPackage,
+  readPackage,
   yamlToStackageList,
   ) where
 import Data.Maybe
@@ -23,7 +25,15 @@ data StackagePackage = StackagePackage {
 
 showPackage :: StackagePackage -> String
 showPackage st = unwords $ stName st : showVersion (stVersion st) : show (stHidden st) : map flag (stFlags st)
-  where flag (n,b) = n ++ ":" ++ show b
+  where flag (n,b) = n ++ "=" ++ show b
+
+readPackage :: String -> StackagePackage
+readPackage spkg =
+  case words spkg of
+    name : vers : hide : flgs ->
+      StackagePackage { stName = name, stVersion = readVersion vers, stHidden = read hide, stFlags = map flag flgs }
+    _ -> error "readPackage"
+  where flag s = (n, read (drop 1 b)) where (n, b) = span (/= '=') s
 
 yamlToStackageList :: YAMLValue -> [StackagePackage]
 yamlToStackageList (YRecord flds) =
