@@ -10,7 +10,7 @@ import Data.Maybe
 import Text.ParserComb
 import MicroCabal.Cabal
 import MicroCabal.YAML
---import Debug.Trace
+import Debug.Trace
 
 parseCabal :: FilePath -> String -> Cabal
 parseCabal fn rfile = runP pCabalTop fn $ dropCabalComments rfile
@@ -60,6 +60,7 @@ instance TokenMachine LexState Char where
 --          trace ("Just NL kks=" ++ show kks ++ " cs=" ++ show (take 10 cs))
           ('\n', LS 0 kks cs)              -- There are at least k leading spaces
         lead j (x:xs) | x == ' ' = lead (j-1) xs                    -- Count spaces
+--                      | x == '-' = ('\n', LS 0 kks cs)
         lead _     _             =
 --          trace ("insert FS kks=" ++ show kks ++ " cs=" ++ show (take 10 cs))
           (fieldSep, LS 0 ks (c:cs))                 -- Fewer than k spaces.  Generate FS, pop, and try again.
@@ -74,6 +75,9 @@ skipEmpty s =
 
 pushColumn :: P ()
 pushColumn = mapTokenState (\ (LS i ks cs) -> LS i (i:ks) cs)
+
+pushFieldSep :: P ()
+pushFieldSep = mapTokenState (\ (LS i ks cs) -> LS i ks (fieldSep:cs))
 
 lower :: String -> String
 lower = map toLower
@@ -119,7 +123,7 @@ pSpaces = () <$ satisfyMany (== ' ')
 
 pIdent :: P String
 pIdent = do
-  c <- satisfy "ident" isAlpha
+  c <- satisfy "ident" isAlpha_
   cs <- satisfyMany isIdent
   pure (c:cs)
 
@@ -132,6 +136,9 @@ pKeyWordNC s = do
 
 isIdent :: Char -> Bool
 isIdent c = isAlphaNum c || c == '-' || c == '_' || c == '\'' || c == '.'
+
+isAlpha_ :: Char -> Bool
+isAlpha_ c = isAlpha c || c == '_'
 
 pNumber :: P Int
 pNumber = read <$> satisfySome "0..9" isDigit
@@ -417,14 +424,20 @@ pYAMLValue =
       (YBool   <$> pBool)
   <|< (YInt    <$> pNumber)
 --  <|< (YString <$> pString)
-  <|< (YString <$> pYAMLFree)
   <|< pYAMLArray
   <|< pYAMLRecord
+  <|< (YString <$> pYAMLFree)
 
 pYAMLArray :: P YAMLValue
-pYAMLArray = YArray <$> (pWhite *> pFieldSep *> esome pElem)
-  where
-    pElem = pChar '-' *> pWhite *> pYAMLValue
+pYAMLArray = do
+  pWhite
+  let
+    pElem    = pChar '-' *> pSpaces *> pYAMLValue
+    pElemFS  = pWhite *> pElem <* pFieldSep
+    pElemsFS = esome pElemFS
+    pElemNL  = pElem <* pChar '\n'
+    pElemsNL = pFieldSep *> pChar '\n' *> esome pElemNL <* pushFieldSep
+  YArray <$> (pElemsNL <|< pElemsFS)
 
 pYAMLRecord :: P YAMLValue
 pYAMLRecord = YRecord <$> esome pYAMLField
@@ -432,7 +445,9 @@ pYAMLRecord = YRecord <$> esome pYAMLField
 pYAMLFree :: P String
 pYAMLFree = do
   pSpaces
-  txt <- satisfyMany (\ c -> c /= end && c /= fieldSep)
+  d <- nextToken
+  guard (d /= '-')
+  txt <- satisfyMany (\ c -> c /= end && c /= fieldSep && c /= '\n')
   pure txt
 
 pYAMLField :: P (YAMLFieldName, YAMLValue)
