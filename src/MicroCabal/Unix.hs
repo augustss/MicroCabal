@@ -1,10 +1,12 @@
 module MicroCabal.Unix(
+  cmd, tryCmd,
   mkdir,
   wget, URL(..),
   tarx,
   ) where
+import Control.Exception
 import Control.Monad
-import System.Process
+import System.Process(callCommand)
 import MicroCabal.Env
 
 newtype URL = URL String
@@ -14,6 +16,9 @@ cmd env s = do
   when (verbose env > 1) $
     putStrLn $ "cmd: " ++ s
   callCommand s
+
+tryCmd :: Env -> String -> IO Bool
+tryCmd env s = catch (cmd env s >> return True) (\ (_ :: SomeException) -> return False)
 
 -- Create a directory path, don't complain if it exists.
 mkdir :: Env -> String -> IO ()

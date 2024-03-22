@@ -27,8 +27,16 @@ executable mcabal
   ghc-options:         -Wall -Wno-unrecognised-warning-flags -Wno-x-partial -main-is MicroCabal.Main
   main-is:             MicroCabal/Main.hs
   default-extensions:  ScopedTypeVariables MultiParamTypeClasses
-  other-modules:       MicroCabal.Cabal
+  other-modules:       MicroCabal.Backend.GHC
+                       MicroCabal.Cabal
+                       MicroCabal.Env
                        MicroCabal.Normalize
                        MicroCabal.Parse
+                       MicroCabal.StackageList
+                       MicroCabal.Unix
+                       MicroCabal.YAML
                        Text.ParserComb
   build-depends:       base         >= 4.10 && < 4.20,
+                       directory,
+                       process,
+                       

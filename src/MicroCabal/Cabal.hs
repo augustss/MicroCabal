@@ -11,6 +11,8 @@ module MicroCabal.Cabal(
   Item,
   FlagInfo(..),
   showCabal,
+  getFieldString,
+  getFieldStrings,
   ) where
 import Data.Version
 
@@ -93,3 +95,15 @@ indent s = "  " ++ concatMap (\ c -> if c == '\n' then "\n  " else [c]) s
 
 showSection :: Section -> String
 showSection (Section s n fs) = unlines $ ("  " ++ s ++ " " ++ n) : map (indent . showField) fs 
+
+getFieldString :: [Field] -> FieldName -> String
+getFieldString flds n =
+  case [ s | Field f (VItem s) <- flds, f == n ] of
+    [s] -> s
+    _   -> error $ "field not found: " ++ show n
+
+getFieldStrings :: [Field] -> FieldName -> [String]
+getFieldStrings flds n =
+  case [ ss | Field f (VItems ss) <- flds, f == n ] of
+    [ss] -> ss
+    _    -> error $ "field not found: " ++ show n

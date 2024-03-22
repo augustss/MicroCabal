@@ -7,6 +7,7 @@ import System.Environment
 import System.Directory
 import qualified System.Info as I
 import Text.Read
+import MicroCabal.Backend.GHC
 import MicroCabal.Cabal
 import MicroCabal.Env
 import MicroCabal.Normalize
@@ -23,6 +24,7 @@ main = do
     [] -> usage
     "build"   : as -> cmdBuild   env as
     "fetch"   : as -> cmdFetch   env as
+    "help"    : as -> cmdHelp    env as
     "install" : as -> cmdInstall env as
     "upgrade" : as -> cmdUpgrade env as
     "test"    : as -> cmdTest    env as
@@ -47,7 +49,7 @@ setupEnv :: IO Env
 setupEnv = do
   home <- getEnv "HOME"
   let cdir = home ++ "/.mcabal"
-  return Env{ cabalDir = cdir, verbose = 0 }
+  return Env{ cabalDir = cdir, verbose = 0, backend = ghcBackend }
 
 decodeCommonArgs :: Env -> IO (Env, [String])
 decodeCommonArgs env = do
@@ -60,7 +62,7 @@ usage :: IO ()
 usage = do
   putStrLn "\
 \Usage:\n\
-\  mcabal [-v] build\n\
+\  mcabal [-v] build [PKG]\n\
 \  mcabal [-v] fetch PKG\n\
 \  mcabal [-v] install\n\
 \  mcabal [-v] upgrade\n\
@@ -134,6 +136,9 @@ cmdTest _ _ = do
 
 -----------------------------------------
 
+hackageSrcURL :: String
+hackageSrcURL = "https://hackage.haskell.org/package/"
+
 getPackageList :: Env -> IO [StackagePackage]
 getPackageList env = do
   let dir = cabalDir env
@@ -150,15 +155,18 @@ getPackageInfo env pkg = do
   pkgs <- getPackageList env
   return $ fromMaybe (error $ "getPackageInfo: no package " ++ pkg) $ listToMaybe $ filter ((== pkg) . stName) pkgs
 
+dirForPackage :: Env -> String -> FilePath
+dirForPackage env pkg = cabalDir env ++ "/packages/" ++ pkg
+
 cmdFetch :: Env -> [String] -> IO ()
 cmdFetch env [pkg] = do
-  let dir = cabalDir env ++ "/packages"
   st <- getPackageInfo env pkg
   let pkgs = stName st ++ "-" ++ showVersion (stVersion st)
-      url  = URL $ "https://hackage.haskell.org/package/" ++ pkgs ++ "/" ++ pkgz
+      url  = URL $ hackageSrcURL ++ pkgs ++ "/" ++ pkgz
       pkgz = pkgs ++ ".tar.gz"
-      file = dir ++ "/" ++ pkgz
-  b <- doesFileExist file
+      dir  = dirForPackage env pkg
+      file = dir ++ ".tar.gz"
+  b <- doesDirectoryExist dir
   when (not b) $ do
     mkdir env dir
     when (verbose env > 0) $
@@ -171,8 +179,70 @@ cmdFetch _ _ = usage
 
 -----------------------------------------
 
+findCabalFile :: Env -> IO FilePath
+findCabalFile _env = do
+  ns <- listDirectory "."
+  case filter (".cabal" `isSuffixOf`) ns of
+    []  -> error "no PKG.cabal file"
+    [n] -> return n
+    _   -> error "multiple PKG.cabal file"
+
 cmdBuild :: Env -> [String] -> IO ()
-cmdBuild _env _args = undefined
+cmdBuild env [] = build env
+cmdBuild env [pkg] = do
+  let dir = dirForPackage env pkg
+  b <- doesDirectoryExist dir
+  when (not b) $ do
+    when (verbose env >= 0) $
+      putStrLn $ "Package not found, running 'fetch " ++ pkg ++ "'"
+    cmdFetch env [pkg]
+  setCurrentDirectory dir
+  cmdBuild env []
+cmdBuild _ _ = usage
+
+build :: Env -> IO ()
+build env = do
+  fn <- findCabalFile env
+  rfile <- readFile fn
+  let cbl = parseCabal fn rfile
+      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
+      ncbl@(Cabal sects) = normalize info cbl
+      sect (Section "executable" name flds) = buildExe env ncbl name flds
+      sect (Section "library"    name flds) = buildLib env ncbl name flds
+      sect _ = return ()
+  mapM_ sect sects
+
+buildExe :: Env -> Cabal -> Name -> [Field] -> IO ()
+buildExe env _cbl name flds = do
+  let deps = getBuildDepends flds
+      pkgs = [ p | (p, _, _) <- deps ]
+  mapM_ (checkDep env) pkgs
+  let bend = backend env
+  buildPkgExe bend env name flds
+
+buildLib :: Env -> Cabal -> Name -> [Field] -> IO ()
+buildLib _ _ _ _ = error "buildLib: not yet"
+
+getBuildDepends :: [Field] -> [(Item, [Item], Maybe VersionRange)]
+getBuildDepends fs =
+  case [ d | Field "build-depends" (VPkgs d) <- fs ] of
+    [d] -> d
+    _   -> []
+
+checkDep :: Env -> PackageName -> IO ()
+checkDep _env pkg | pkg `elem` ["base", "directory", "process"] = return ()
+checkDep env pkg = do
+  let bend = backend env
+  b <- doesPkgExist bend env pkg
+  when (not b) $
+    error $ "dependency not installed: " ++ pkg
+
+-----------------------------------------
 
 cmdInstall :: Env -> [String] -> IO ()
 cmdInstall _env _args = undefined
+
+-----------------------------------------
+
+cmdHelp :: Env -> [String] -> IO ()
+cmdHelp _ _ = putStrLn "Coming soon"

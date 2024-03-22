@@ -11,7 +11,7 @@ import Data.Maybe
 import Text.ParserComb
 import MicroCabal.Cabal
 import MicroCabal.YAML
-import Debug.Trace
+--import Debug.Trace
 
 parseCabal :: FilePath -> String -> Cabal
 parseCabal fn rfile = runP pCabalTop fn $ dropCabalComments rfile

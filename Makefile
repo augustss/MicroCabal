@@ -1,4 +1,4 @@
-bin/mcabal:	src/MicroCabal/*.hs
+bin/mcabal:	src/MicroCabal/*.hs src/MicroCabal/*/*.hs
 	@mkdir -p bin
 	ghc -outputdir ghc-out -Wall -Wno-unrecognised-warning-flags -Wno-x-partial --make -isrc -o bin/mcabal -main-is MicroCabal.Main MicroCabal.Main
 
