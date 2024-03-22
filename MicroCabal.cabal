@@ -1,25 +1,25 @@
-cabal-version:       3.0
-name:                MicroCabal
-version:             0.1.0.0
-synopsis:            A Cabal replacement
-license:             Apache-2.0
-license-file:        LICENSE
-copyright:           2024 Lennart Augustsson
-category:            language
-author:              lennart@augustsson.net
-maintainer:          lennart@augustsson.net
-stability:           experimental
-description:         A portable subset of the Cabal functionality.
-build-type:          Simple
+cabal-version:         3.0
+name:                  MicroCabal
+version:               0.1.0.0
+synopsis:              A Cabal replacement
+license:               Apache-2.0
+license-file:          LICENSE
+copyright:             2024 Lennart Augustsson
+category:              language
+author:                lennart@augustsson.net
+maintainer:            lennart@augustsson.net
+stability:             experimental
+description:           A portable subset of the Cabal functionality.
+build-type:            Simple
 
 extra-source-files:
-      LICENSE
-      Makefile
-      README.md
+  LICENSE
+  Makefile
+  README.md
 
 source-repository head
-    type:     git
-    location: https://github.com/augustss/MicroCabal
+  type:                git
+  location:            https://github.com/augustss/MicroCabal
 
 executable mcabal
   default-language:    Haskell2010
