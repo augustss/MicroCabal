@@ -37,8 +37,9 @@ ghcBuildExe env (Section _ name flds) = do
       srcDirs = getFieldStrings flds "hs-source-dirs"
       exts    = getFieldStrings flds "default-extensions"
       opts    = getFieldStrings flds "ghc-options"
-      bin     = distDir env ++ "/bin/" ++ name
-  mkdir env $ distDir env ++ "/bin"
+      binGhc  = "/bin/ghc/"
+      bin     = distDir env ++ binGhc ++ name
+  mkdir env $ distDir env ++ binGhc
   mainIs' <- findMainIs env srcDirs mainIs
   let args    = unwords $ [ "-outputdir", distDir env ++ "/build", "-package-db=" ++ db ] ++
                           map ("-i" ++) srcDirs ++

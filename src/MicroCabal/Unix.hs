@@ -3,6 +3,7 @@ module MicroCabal.Unix(
   mkdir,
   wget, URL(..),
   tarx,
+  rmrf,
   ) where
 import Control.Exception
 import Control.Monad
@@ -31,3 +32,7 @@ wget env (URL url) fn = cmd env $ "wget --quiet --output-document=" ++ fn ++ " "
 -- Extract a tar file
 tarx :: Env -> FilePath -> FilePath -> IO ()
 tarx env dir file = cmd env $ "tar -C " ++ dir ++ " -x -f " ++ file
+
+-- Recursively remove
+rmrf :: Env -> FilePath -> IO ()
+rmrf env fn = cmd env $ "rm -rf " ++ fn

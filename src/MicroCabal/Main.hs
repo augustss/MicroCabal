@@ -23,11 +23,11 @@ main = do
   case args of
     [] -> usage
     "build"   : as -> cmdBuild   env as
+    "clean"   : as -> cmdClean   env as
     "fetch"   : as -> cmdFetch   env as
     "help"    : as -> cmdHelp    env as
     "install" : as -> cmdInstall env as
     "upgrade" : as -> cmdUpgrade env as
-    "test"    : as -> cmdTest    env as
     _ -> usage
 
 {-
@@ -62,10 +62,12 @@ usage :: IO ()
 usage = do
   putStrLn "\
 \Usage:\n\
-\  mcabal [-v] build [PKG]\n\
-\  mcabal [-v] fetch PKG\n\
-\  mcabal [-v] install\n\
-\  mcabal [-v] upgrade\n\
+\  mcabal [FLAGS] build [PKG]\n\
+\  mcabal [FLAGS] clean\n\
+\  mcabal [FLAGS] fetch PKG\n\
+\  mcabal [FLAGS] help\n\
+\  mcabal [FLAGS] install\n\
+\  mcabal [FLAGS] upgrade\n\
 \"
   error "done"
 
@@ -249,3 +251,8 @@ cmdInstall _env _args = undefined
 
 cmdHelp :: Env -> [String] -> IO ()
 cmdHelp _ _ = putStrLn "Coming soon"
+
+-----------------------------------------
+
+cmdClean :: Env -> [String] -> IO ()
+cmdClean env _ = rmrf env (distDir env)
