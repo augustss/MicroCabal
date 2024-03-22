@@ -7,15 +7,17 @@ bin/mcabal:	src/MicroCabal/*.hs src/MicroCabal/*/*.hs
 
 bin/gmcabal:	src/MicroCabal/*.hs src/MicroCabal/*/*.hs
 	@mkdir -p bin
-	ghc -outputdir ghc-out -Wall -Wno-unrecognised-warning-flags -Wno-x-partial --make -isrc -o bin/mcabal -main-is MicroCabal.Main MicroCabal.Main
+	ghc -outputdir ghc-out -Wall -Wno-unrecognised-warning-flags -Wno-x-partial --make -isrc -o bin/gmcabal -main-is MicroCabal.Main MicroCabal.Main
+
+all:	bin/mcabal bin/gmcabal
 
 clean:
 	rm -rf ghc-out bin/*
 	cabal clean
 
 test:	bin/mcabal
-	bin/mcabal MicroCabal.cabal
-	bin/mcabal ../MicroHs/MicroHs.cabal
-	bin/mcabal ../MicroHs/cpphssrc/malcolm-wallace-universe/polyparse-1.12/polyparse.cabal
-	bin/mcabal ../MicroHs/cpphssrc/malcolm-wallace-universe/cpphs-1.20.9/cpphs.cabal
-	bin/mcabal ..//Hackage/optparse-applicative/optparse-applicative.cabal
+	bin/mcabal parse MicroCabal.cabal
+	bin/mcabal parse ../MicroHs/MicroHs.cabal
+	bin/mcabal parse ../MicroHs/cpphssrc/malcolm-wallace-universe/polyparse-1.12/polyparse.cabal
+	bin/mcabal parse ../MicroHs/cpphssrc/malcolm-wallace-universe/cpphs-1.20.9/cpphs.cabal
+	bin/mcabal parse ../Hackage/optparse-applicative-0.18.1.0/optparse-applicative.cabal

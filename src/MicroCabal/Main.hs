@@ -28,6 +28,7 @@ main = do
     "fetch"   : as -> cmdFetch   env as
     "help"    : as -> cmdHelp    env as
     "install" : as -> cmdInstall env as
+    "parse"   : as -> cmdParse   env as
     "update"  : as -> cmdUpdate  env as
     _ -> usage
 
@@ -253,3 +254,14 @@ cmdHelp _ _ = putStrLn "Coming soon"
 
 cmdClean :: Env -> [String] -> IO ()
 cmdClean env _ = rmrf env (distDir env)
+
+-----------------------------------------
+
+cmdParse :: Env -> [String] -> IO ()
+cmdParse env [fn] = do
+  rfile <- readFile fn
+  let cbl = parseCabal fn rfile
+      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
+      ncbl = normalize info cbl
+  --putStrLn $ showCabal cbl
+  putStrLn $ showCabal ncbl
