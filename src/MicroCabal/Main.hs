@@ -49,7 +49,7 @@ setupEnv :: IO Env
 setupEnv = do
   home <- getEnv "HOME"
   let cdir = home ++ "/.mcabal"
-  return Env{ cabalDir = cdir, verbose = 0, backend = ghcBackend }
+  return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, backend = ghcBackend }
 
 decodeCommonArgs :: Env -> IO (Env, [String])
 decodeCommonArgs env = do
@@ -206,22 +206,25 @@ build env = do
   rfile <- readFile fn
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
-      ncbl@(Cabal sects) = normalize info cbl
-      sect (Section "executable" name flds) = buildExe env ncbl name flds
-      sect (Section "library"    name flds) = buildLib env ncbl name flds
+      Cabal sects = normalize info cbl
+      sect s@(Section "executable" _ _) = buildExe env s
+      sect s@(Section "library"    _ _) = buildLib env s
       sect _ = return ()
   mapM_ sect sects
 
-buildExe :: Env -> Cabal -> Name -> [Field] -> IO ()
-buildExe env _cbl name flds = do
+buildExe :: Env -> Section -> IO ()
+buildExe env sect@(Section _ _ flds) = do
   let deps = getBuildDepends flds
       pkgs = [ p | (p, _, _) <- deps ]
   mapM_ (checkDep env) pkgs
-  let bend = backend env
-  buildPkgExe bend env name flds
+  buildPkgExe (backend env) env sect
 
-buildLib :: Env -> Cabal -> Name -> [Field] -> IO ()
-buildLib _ _ _ _ = error "buildLib: not yet"
+buildLib :: Env -> Section -> IO ()
+buildLib env sect@(Section _ _ flds) = do
+  let deps = getBuildDepends flds
+      pkgs = [ p | (p, _, _) <- deps ]
+  mapM_ (checkDep env) pkgs
+  buildPkgLib (backend env) env sect
 
 getBuildDepends :: [Field] -> [(Item, [Item], Maybe VersionRange)]
 getBuildDepends fs =

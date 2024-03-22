@@ -6,7 +6,12 @@ import MicroCabal.Env
 import MicroCabal.Unix
 
 ghcBackend :: Backend
-ghcBackend = Backend { doesPkgExist = ghcExists, buildPkgExe = ghcBuildExe, installPkgExe = ghcInstallExe, buildPkgLib = ghcBuildLib, installPkgLib = ghcInstallLib }
+ghcBackend = Backend {
+  backendName = "ghc",
+  doesPkgExist = ghcExists,
+  buildPkgExe = ghcBuildExe,
+  buildPkgLib = ghcBuildLib,
+  installPkgLib = ghcInstallLib }
 
 -- XXX needs version info
 getGhcDir :: Env -> IO FilePath
@@ -19,26 +24,23 @@ initDB env = do
   when (not b) $ do
     cmd env $ "ghc-pkg init " ++ dir
 
-distDir :: String
-distDir = "dist-mcabal"
-
 ghcExists :: Env -> PackageName -> IO Bool
 ghcExists env pkgname = do
   dir <- getGhcDir env
   tryCmd env $ "ghc-pkg --package-db=" ++ dir ++ " describe >/dev/null 2>/dev/null " ++ pkgname
 
-ghcBuildExe :: Env -> String -> [Field] -> IO ()
-ghcBuildExe env name flds = do
+ghcBuildExe :: Env -> Section -> IO ()
+ghcBuildExe env (Section _ name flds) = do
   initDB env
   db <- getGhcDir env
   let mainIs  = getFieldString  flds "main-is"
       srcDirs = getFieldStrings flds "hs-source-dirs"
       exts    = getFieldStrings flds "default-extensions"
       opts    = getFieldStrings flds "ghc-options"
-      bin     = distDir ++ "/bin/" ++ name
-  mkdir env $ distDir ++ "/bin"
+      bin     = distDir env ++ "/bin/" ++ name
+  mkdir env $ distDir env ++ "/bin"
   mainIs' <- findMainIs env srcDirs mainIs
-  let args    = unwords $ [ "-outputdir", distDir ++ "/build", "-package-db=" ++ db ] ++
+  let args    = unwords $ [ "-outputdir", distDir env ++ "/build", "-package-db=" ++ db ] ++
                           map ("-i" ++) srcDirs ++
                           map ("-X" ++) exts ++
                           opts ++
@@ -57,17 +59,12 @@ findMainIs env (d:ds) fn = do
    else
     findMainIs env ds fn
 
-ghcInstallExe :: Env -> Cabal -> IO ()
-ghcInstallExe env _cbl = do
-  initDB env
-  undefined
-
-ghcBuildLib :: Env -> Cabal -> IO ()
+ghcBuildLib :: Env -> Section -> IO ()
 ghcBuildLib env _cbl = do
   initDB env
   undefined
 
-ghcInstallLib :: Env -> Cabal -> IO ()
+ghcInstallLib :: Env -> Section -> IO ()
 ghcInstallLib env _cbl = do
   initDB env
   undefined
