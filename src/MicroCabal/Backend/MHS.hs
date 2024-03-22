@@ -32,7 +32,7 @@ mhsExists env _pkgname = do
   return False
 
 setupStdArgs :: Env -> FilePath -> [Field] -> [String]
-setupStdArgs env db flds =
+setupStdArgs _env _db flds =
   let srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
       defExts = getFieldStrings flds []      "default-extensions"
       exts    = getFieldStrings flds defExts "extensions"
