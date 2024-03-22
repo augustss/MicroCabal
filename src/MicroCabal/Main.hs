@@ -8,6 +8,7 @@ import System.Directory
 import qualified System.Info as I
 import Text.Read
 import MicroCabal.Backend.GHC
+import MicroCabal.Backend.MHS
 import MicroCabal.Cabal
 import MicroCabal.Env
 import MicroCabal.Normalize
@@ -27,34 +28,21 @@ main = do
     "fetch"   : as -> cmdFetch   env as
     "help"    : as -> cmdHelp    env as
     "install" : as -> cmdInstall env as
-    "upgrade" : as -> cmdUpgrade env as
+    "update"  : as -> cmdUpdate  env as
     _ -> usage
-
-{-
-  let fn = args !! 0
-  rfile <- readFile fn
-  if False then do
-    let cbl = parseCabal fn rfile
-        info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
-        ncbl = normalize info cbl
-    putStrLn $ showCabal cbl
-    putStrLn $ showCabal ncbl
-   else do
-    let y = parseYAML fn rfile
-    putStrLn $ showYAML y
-    putStrLn $ show $ yamlToStackageList y
--}
 
 setupEnv :: IO Env
 setupEnv = do
   home <- getEnv "HOME"
   let cdir = home ++ "/.mcabal"
-  return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, backend = ghcBackend }
+  return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, backend = mhsBackend }
 
 decodeCommonArgs :: Env -> IO (Env, [String])
 decodeCommonArgs env = do
-  let loop e ("-v" : as) = loop e{ verbose = verbose e + 1 } as
-      loop e ("-q" : as) = loop e{ verbose = -1 } as
+  let loop e ("-v"    : as) = loop e{ verbose = verbose e + 1 } as
+      loop e ("-q"    : as) = loop e{ verbose = -1 } as
+      loop e ("--ghc" : as) = loop e{ backend = ghcBackend } as
+      loop e ("--mhs" : as) = loop e{ backend = mhsBackend } as
       loop e as = return (e, as)
   loop env =<< getArgs
 
@@ -67,7 +55,7 @@ usage = do
 \  mcabal [FLAGS] fetch PKG\n\
 \  mcabal [FLAGS] help\n\
 \  mcabal [FLAGS] install\n\
-\  mcabal [FLAGS] upgrade\n\
+\  mcabal [FLAGS] update\n\
 \"
   error "done"
 
@@ -109,8 +97,8 @@ getBestStackage env = do
     putStrLn $ "Picking Stackage snapshot " ++ snap
   return $ URL $ snapshotSource ++ snap' ++ ".yaml"
 
-cmdUpgrade :: Env -> [String] -> IO ()
-cmdUpgrade env _args = do
+cmdUpdate :: Env -> [String] -> IO ()
+cmdUpdate env _args = do
   when (verbose env >= 0) $
     putStrLn "Retrieving Stackage package list"
   let dir = cabalDir env
@@ -148,8 +136,8 @@ getPackageList env = do
   b <- doesFileExist fpkgs
   when (not b) $ do
     when (verbose env >= 0) $
-      putStrLn "No package list, running 'upgrade' command"
-    cmdUpgrade env []
+      putStrLn "No package list, running 'update' command"
+    cmdUpdate env []
   map readPackage . lines <$> readFile fpkgs
 
 getPackageInfo :: Env -> PackageName -> IO StackagePackage
@@ -157,8 +145,11 @@ getPackageInfo env pkg = do
   pkgs <- getPackageList env
   return $ fromMaybe (error $ "getPackageInfo: no package " ++ pkg) $ listToMaybe $ filter ((== pkg) . stName) pkgs
 
-dirForPackage :: Env -> String -> FilePath
-dirForPackage env pkg = cabalDir env ++ "/packages/" ++ pkg
+dirPackage :: Env -> FilePath
+dirPackage env = cabalDir env ++ "/packages"
+
+dirForPackage :: Env -> StackagePackage -> FilePath
+dirForPackage env st = dirPackage env ++ "/" ++ stName st ++ "-" ++ showVersion (stVersion st)
 
 cmdFetch :: Env -> [String] -> IO ()
 cmdFetch env [pkg] = do
@@ -166,17 +157,17 @@ cmdFetch env [pkg] = do
   let pkgs = stName st ++ "-" ++ showVersion (stVersion st)
       url  = URL $ hackageSrcURL ++ pkgs ++ "/" ++ pkgz
       pkgz = pkgs ++ ".tar.gz"
-      dir  = dirForPackage env pkg
-      file = dir ++ ".tar.gz"
-  b <- doesDirectoryExist dir
+      pdir = dirForPackage env st
+      file = pdir ++ ".tar.gz"
+  b <- doesDirectoryExist pdir
   when (not b) $ do
-    mkdir env dir
+    mkdir env pdir
     when (verbose env > 0) $
       putStrLn $ "Fetching  " ++ pkgz
     wget env url file
     when (verbose env > 0) $
       putStrLn $ "Unpacking " ++ pkgz
-    tarx env dir file
+    tarx env (dirPackage env) file
 cmdFetch _ _ = usage
 
 -----------------------------------------
@@ -192,12 +183,15 @@ findCabalFile _env = do
 cmdBuild :: Env -> [String] -> IO ()
 cmdBuild env [] = build env
 cmdBuild env [pkg] = do
-  let dir = dirForPackage env pkg
+  st <- getPackageInfo env pkg
+  let dir = dirForPackage env st
   b <- doesDirectoryExist dir
   when (not b) $ do
     when (verbose env >= 0) $
       putStrLn $ "Package not found, running 'fetch " ++ pkg ++ "'"
     cmdFetch env [pkg]
+  when (verbose env >= 0) $
+    putStrLn $ "Building in " ++ dir
   setCurrentDirectory dir
   cmdBuild env []
 cmdBuild _ _ = usage
@@ -235,12 +229,15 @@ getBuildDepends fs =
     _   -> []
 
 checkDep :: Env -> PackageName -> IO ()
-checkDep _env pkg | pkg `elem` ["base", "directory", "process"] = return ()
+checkDep _env pkg | pkg `elem` builtinPackages = return ()
 checkDep env pkg = do
   let bend = backend env
   b <- doesPkgExist bend env pkg
   when (not b) $
     error $ "dependency not installed: " ++ pkg
+
+builtinPackages :: [String]
+builtinPackages = ["base", "directory", "process", "bytestring", "text", "fail"]
 
 -----------------------------------------
 

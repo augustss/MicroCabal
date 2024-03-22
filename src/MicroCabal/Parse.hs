@@ -407,6 +407,7 @@ parsers =
   -- flag fields
   , "manual"                         # (VBool <$> pBool)
   , "default"                        # (VBool <$> pBool)
+  , "tag"                            # pFreeText
   ]
   where (#) = (,)
   -- XXX use local fixity

@@ -28,6 +28,7 @@ executable mcabal
   main-is:             MicroCabal/Main.hs
   default-extensions:  ScopedTypeVariables MultiParamTypeClasses
   other-modules:       MicroCabal.Backend.GHC
+                       MicroCabal.Backend.MHS
                        MicroCabal.Cabal
                        MicroCabal.Env
                        MicroCabal.Normalize

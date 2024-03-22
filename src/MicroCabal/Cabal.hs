@@ -10,7 +10,7 @@ module MicroCabal.Cabal(
   VersionRange(..),
   Item,
   FlagInfo(..),
-  showCabal,
+  showCabal, showSection,
   getFieldString,
   getFieldStrings,
   ) where
@@ -102,8 +102,8 @@ getFieldString flds n =
     [s] -> s
     _   -> error $ "field not found: " ++ show n
 
-getFieldStrings :: [Field] -> FieldName -> [String]
-getFieldStrings flds n =
+getFieldStrings :: [Field] -> [String] -> FieldName -> [String]
+getFieldStrings flds def n =
   case [ ss | Field f (VItems ss) <- flds, f == n ] of
     [ss] -> ss
-    _    -> error $ "field not found: " ++ show n
+    _    -> def
