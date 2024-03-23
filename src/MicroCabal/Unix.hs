@@ -4,6 +4,7 @@ module MicroCabal.Unix(
   wget, URL(..),
   tarx,
   rmrf,
+  cp,
   ) where
 import Control.Exception
 import Control.Monad
@@ -62,3 +63,9 @@ tarx env dir file = cmd env $ "tar -C " ++ dir ++ " -x -f " ++ file
 -- Recursively remove
 rmrf :: Env -> FilePath -> IO ()
 rmrf env fn = cmd env $ "rm -rf " ++ fn
+
+-- Copy a file to a directory
+cp :: Env -> FilePath -> FilePath -> IO ()
+cp env s d = do
+  cmd env $ "rm -f " ++ d
+  cmd env $ "cp " ++ s ++ " " ++ d

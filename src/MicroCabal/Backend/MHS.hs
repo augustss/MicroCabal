@@ -11,6 +11,7 @@ mhsBackend = Backend {
   doesPkgExist = mhsExists,
   buildPkgExe = mhsBuildExe,
   buildPkgLib = mhsBuildLib,
+  installPkgExe = mhsInstallExe,
   installPkgLib = mhsInstallLib
   }
 
@@ -44,12 +45,14 @@ setupStdArgs _env flds =
       map ("-X" ++) exts' ++
       opts ++ cppOpts
 
+binMhs :: String
+binMhs  = "/bin/ghc/"
+
 mhsBuildExe :: Env -> Section -> IO ()
 mhsBuildExe env (Section _ name flds) = do
   initDB env
   let mainIs  = getFieldString  flds         "main-is"
       srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
-      binMhs  = "/bin/mhs/"
       bin     = distDir env ++ binMhs ++ name
   mkdir env $ distDir env ++ binMhs
   mainIs' <- findMainIs env srcDirs mainIs
@@ -79,7 +82,13 @@ mhsBuildLib env (Section _ name flds) = do
                        setupStdArgs env flds ++ mdls
   error $ "No mhsBuildLib\n" ++ show args
 
-mhsInstallLib :: Env -> Section -> IO ()
-mhsInstallLib env _cbl = do
+mhsInstallExe :: Env -> Section -> Section -> IO ()
+mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do
+  let bin = distDir env ++ binMhs ++ name
+      binDir = cabalDir env ++ "/bin"
+  cp env bin binDir
+
+mhsInstallLib :: Env -> Section -> Section -> IO ()
+mhsInstallLib env _glob _sect = do
   initDB env
   undefined

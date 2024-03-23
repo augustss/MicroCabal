@@ -11,13 +11,20 @@ ghcBackend = Backend {
   doesPkgExist = ghcExists,
   buildPkgExe = ghcBuildExe,
   buildPkgLib = ghcBuildLib,
-  installPkgLib = ghcInstallLib }
+  installPkgExe = ghcInstallExe,
+  installPkgLib = ghcInstallLib
+  }
 
 getGhcName :: Env -> IO FilePath
 getGhcName env = ("ghc-" ++) . takeWhile (/= '\n') <$> cmdOut env "ghc --numeric-version"
 
 getGhcDir :: Env -> IO FilePath
 getGhcDir env = ((cabalDir env ++ "/") ++) <$> getGhcName env
+
+getBuildDir :: Env -> IO FilePath
+getBuildDir env = do
+  ghc <- getGhcName env
+  return $ distDir env ++ "/build/" ++ ghc
 
 initDB :: Env -> IO ()
 initDB env = do
@@ -42,19 +49,21 @@ setupStdArgs env flds = do
       opts    = getFieldStrings flds []      "ghc-options"
       cppOpts = getFieldStrings flds []      "cpp-options"
       deps    = getBuildDependsPkg flds
-  ghc <- getGhcName env
-  return $ [ "-outputdir", distDir env ++ "/build/" ++ ghc, "-package-db=" ++ db, "-w", "-no-link" ] ++
+  buildDir <- getBuildDir env
+  return $ [ "-outputdir", buildDir, "-package-db=" ++ db, "-w"] ++
            map ("-i" ++) srcDirs ++
            map ("-X" ++) exts ++
            map ("-package " ++) deps ++
            opts ++ cppOpts
+
+binGhc :: String
+binGhc  = "/bin/ghc/"
 
 ghcBuildExe :: Env -> Section -> IO ()
 ghcBuildExe env (Section _ name flds) = do
   initDB env
   let mainIs  = getFieldString flds "main-is"
       srcDirs = getFieldStrings flds ["."] "hs-source-dirs"
-      binGhc  = "/bin/ghc/"
       bin     = distDir env ++ binGhc ++ name
   mkdir env $ distDir env ++ binGhc
   mainIs' <- findMainIs env srcDirs mainIs
@@ -79,12 +88,24 @@ ghcBuildLib env (Section _ name flds) = do
   initDB env
   stdArgs <- setupStdArgs env flds
   let mdls = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
-      args = unwords $ stdArgs ++ ["--make"] ++ mdls
+      args = unwords $ stdArgs ++ ["--make", "-no-link" ] ++ mdls
   when (verbose env >= 0) $
     putStrLn $ "Build library " ++ name ++ " with ghc"
   cmd env $ "ghc " ++ args
 
-ghcInstallLib :: Env -> Section -> IO ()
-ghcInstallLib env _cbl = do
+ghcInstallExe :: Env -> Section -> Section -> IO ()
+ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
+  let bin = distDir env ++ binGhc ++ name
+      binDir = cabalDir env ++ "/bin"
+  cp env bin binDir
+
+ghcInstallLib :: Env -> Section -> Section -> IO ()
+ghcInstallLib env (Section _ _ glob) (Section _ name _) = do
   initDB env
+  buildDir <- getBuildDir env
+  ghc <- getGhcDir env
+  let destDir = ghc ++ "/" ++ name ++ "-" ++ vers
+      vers = getFieldString glob "version"
+      arch = destDir ++ "/" ++ "libHS" ++ name ++ ".a"
+  cmd env $ "ar -c -r -s " ++ arch ++ " `find " ++ buildDir ++ " -name '*.o'`"
   undefined

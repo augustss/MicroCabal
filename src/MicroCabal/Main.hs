@@ -236,7 +236,29 @@ builtinPackages = ["base", "directory", "process", "bytestring", "text", "fail"]
 -----------------------------------------
 
 cmdInstall :: Env -> [String] -> IO ()
-cmdInstall _env _args = undefined
+cmdInstall env args = do
+  -- The will build and change current directory
+  cmdBuild env args
+  install env
+
+install :: Env -> IO ()
+install env = do
+  fn <- findCabalFile env
+  rfile <- readFile fn
+  let cbl = parseCabal fn rfile
+      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
+      Cabal sects = normalize info cbl
+      glob = fromMaybe (error "no global section") $ listToMaybe [ s | s@(Section "global" _ _) <- sects ]
+      sect s@(Section "executable" _ _) = installExe env glob s
+      sect s@(Section "library"    _ _) = installLib env glob s
+      sect _ = return ()
+  mapM_ sect sects
+
+installExe :: Env -> Section -> Section -> IO ()
+installExe env = installPkgExe (backend env) env
+
+installLib :: Env -> Section -> Section -> IO ()
+installLib env = installPkgLib (backend env) env
 
 -----------------------------------------
 
