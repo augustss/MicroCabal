@@ -13,6 +13,8 @@ module MicroCabal.Cabal(
   showCabal, showSection,
   getFieldString,
   getFieldStrings,
+  getBuildDepends,
+  getBuildDependsPkg,
   ) where
 import Data.Version
 
@@ -107,3 +109,12 @@ getFieldStrings flds def n =
   case [ ss | Field f (VItems ss) <- flds, f == n ] of
     [ss] -> ss
     _    -> def
+
+getBuildDepends :: [Field] -> [(Item, [Item], Maybe VersionRange)]
+getBuildDepends fs =
+  case [ d | Field "build-depends" (VPkgs d) <- fs ] of
+    [d] -> d
+    _   -> []
+
+getBuildDependsPkg :: [Field] -> [String]
+getBuildDependsPkg = map (\ (p,_,_) -> p) . getBuildDepends

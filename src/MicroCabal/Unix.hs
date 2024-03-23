@@ -1,5 +1,5 @@
 module MicroCabal.Unix(
-  cmd, tryCmd,
+  cmd, tryCmd, cmdOut,
   mkdir,
   wget, URL(..),
   tarx,
@@ -7,6 +7,10 @@ module MicroCabal.Unix(
   ) where
 import Control.Exception
 import Control.Monad
+import Data.Maybe
+import System.Directory
+import System.Environment
+import System.IO
 import System.Process(callCommand)
 import MicroCabal.Env
 
@@ -20,6 +24,28 @@ cmd env s = do
 
 tryCmd :: Env -> String -> IO Bool
 tryCmd env s = catch (cmd env s >> return True) (\ (_ :: SomeException) -> return False)
+
+cmdOut :: Env -> String -> IO String
+cmdOut env s = do
+  (fn, h) <- tmpFile
+  hClose h
+  cmd env $ s ++ ">" ++ fn
+  o <- readFile fn
+  removeFile fn
+  return o
+
+tmpFile :: IO (String, Handle)
+tmpFile = do
+  mtmp <- lookupEnv "TMPDIR"
+  let tmp = fromMaybe "/tmp" mtmp
+      tmplt = "mcabal.txt"
+  res <- try $ openTempFile tmp tmplt
+  case res of
+    Right x -> return x
+    Left (_::SomeException) -> openTempFile "." tmplt
+
+
+---------
 
 -- Create a directory path, don't complain if it exists.
 mkdir :: Env -> String -> IO ()

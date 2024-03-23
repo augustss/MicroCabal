@@ -7,9 +7,9 @@ bin/mcabal:	src/MicroCabal/*.hs src/MicroCabal/*/*.hs
 
 bin/gmcabal:	src/MicroCabal/*.hs src/MicroCabal/*/*.hs
 	@mkdir -p bin
-	ghc -outputdir ghc-out -Wall -Wno-unrecognised-warning-flags -Wno-x-partial --make -isrc -o bin/gmcabal -main-is MicroCabal.Main MicroCabal.Main
+	ghc -outputdir ghc-out -Wall -Wno-unrecognised-warning-flags -Wno-x-partial --make -isrc -o bin/gmcabal -main-is MicroCabal.Main -package directory -package process MicroCabal.Main
 
-all:	bin/mcabal bin/gmcabal
+all:	bin/gmcabal bin/mcabal
 
 clean:
 	rm -rf ghc-out bin/*

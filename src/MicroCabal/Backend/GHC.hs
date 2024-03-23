@@ -13,15 +13,19 @@ ghcBackend = Backend {
   buildPkgLib = ghcBuildLib,
   installPkgLib = ghcInstallLib }
 
--- XXX needs version info
+getGhcName :: Env -> IO FilePath
+getGhcName env = ("ghc-" ++) . takeWhile (/= '\n') <$> cmdOut env "ghc --numeric-version"
+
 getGhcDir :: Env -> IO FilePath
-getGhcDir env = return $ cabalDir env ++ "/ghc"
+getGhcDir env = ((cabalDir env ++ "/") ++) <$> getGhcName env
 
 initDB :: Env -> IO ()
 initDB env = do
   dir <- getGhcDir env
   b <- doesDirectoryExist dir
   when (not b) $ do
+    when (verbose env > 0) $
+      putStrLn $ "Creating GHC package db " ++ dir
     cmd env $ "ghc-pkg init " ++ dir
 
 ghcExists :: Env -> PackageName -> IO Bool
@@ -29,30 +33,33 @@ ghcExists env pkgname = do
   dir <- getGhcDir env
   tryCmd env $ "ghc-pkg --package-db=" ++ dir ++ " describe >/dev/null 2>/dev/null " ++ pkgname
 
-setupStdArgs :: Env -> FilePath -> [Field] -> [String]
-setupStdArgs env db flds =
+setupStdArgs :: Env -> [Field] -> IO [String]
+setupStdArgs env flds = do
+  db <- getGhcDir env
   let srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
       defExts = getFieldStrings flds []      "default-extensions"
       exts    = getFieldStrings flds defExts "extensions"
       opts    = getFieldStrings flds []      "ghc-options"
       cppOpts = getFieldStrings flds []      "cpp-options"
-  in  [ "-outputdir", distDir env ++ "/build", "-package-db=" ++ db ] ++
-      map ("-i" ++) srcDirs ++
-      map ("-X" ++) exts ++
-      opts ++ cppOpts
+      deps    = getBuildDependsPkg flds
+  ghc <- getGhcName env
+  return $ [ "-outputdir", distDir env ++ "/build/" ++ ghc, "-package-db=" ++ db, "-w", "-no-link" ] ++
+           map ("-i" ++) srcDirs ++
+           map ("-X" ++) exts ++
+           map ("-package " ++) deps ++
+           opts ++ cppOpts
 
 ghcBuildExe :: Env -> Section -> IO ()
 ghcBuildExe env (Section _ name flds) = do
   initDB env
-  db <- getGhcDir env
   let mainIs  = getFieldString flds "main-is"
       srcDirs = getFieldStrings flds ["."] "hs-source-dirs"
       binGhc  = "/bin/ghc/"
       bin     = distDir env ++ binGhc ++ name
   mkdir env $ distDir env ++ binGhc
   mainIs' <- findMainIs env srcDirs mainIs
-  let args    = unwords $ setupStdArgs env db flds ++
-                          ["-o", bin, "--make", mainIs']
+  stdArgs <- setupStdArgs env flds
+  let args    = unwords $ stdArgs ++ ["-o", bin, "--make", mainIs']
   when (verbose env >= 0) $
     putStrLn $ "Build executable " ++ bin ++ " with ghc"
   cmd env $ "ghc " ++ args
@@ -70,11 +77,9 @@ findMainIs env (d:ds) fn = do
 ghcBuildLib :: Env -> Section -> IO ()
 ghcBuildLib env (Section _ name flds) = do
   initDB env
-  db <- getGhcDir env
+  stdArgs <- setupStdArgs env flds
   let mdls = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
-      args = unwords $ setupStdArgs env db flds ++
-                       ["--make"] ++
-                       mdls
+      args = unwords $ stdArgs ++ ["--make"] ++ mdls
   when (verbose env >= 0) $
     putStrLn $ "Build library " ++ name ++ " with ghc"
   cmd env $ "ghc " ++ args

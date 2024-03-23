@@ -31,12 +31,12 @@ mhsExists env _pkgname = do
   _dir <- getMhsDir env
   return False
 
-setupStdArgs :: Env -> FilePath -> [Field] -> [String]
-setupStdArgs _env _db flds =
+setupStdArgs :: Env -> [Field] -> [String]
+setupStdArgs _env flds =
   let srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
       defExts = getFieldStrings flds []      "default-extensions"
       exts    = getFieldStrings flds defExts "extensions"
-      opts    = getFieldStrings flds []      "ghc-options"
+      opts    = getFieldStrings flds []      "mhs-options"
       cppOpts = getFieldStrings flds []      "cpp-options"
       exts'   = filter (`elem` mhsX) exts
       mhsX    = ["CPP"]
@@ -47,14 +47,13 @@ setupStdArgs _env _db flds =
 mhsBuildExe :: Env -> Section -> IO ()
 mhsBuildExe env (Section _ name flds) = do
   initDB env
-  db <- getMhsDir env
   let mainIs  = getFieldString  flds         "main-is"
       srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
       binMhs  = "/bin/mhs/"
       bin     = distDir env ++ binMhs ++ name
   mkdir env $ distDir env ++ binMhs
   mainIs' <- findMainIs env srcDirs mainIs
-  let args    = unwords $ setupStdArgs env db flds ++
+  let args    = unwords $ setupStdArgs env flds ++
                           ["-o" ++ bin, mainIs']
   when (verbose env >= 0) $
     putStrLn $ "Build " ++ bin ++ " with mhs"
@@ -75,10 +74,9 @@ findMainIs env (d:ds) fn = do
 mhsBuildLib :: Env -> Section -> IO ()
 mhsBuildLib env (Section _ name flds) = do
   initDB env
-  db <- getMhsDir env
   let mdls = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
       args = unwords $ ["-P" ++ name] ++
-                       setupStdArgs env db flds ++ mdls
+                       setupStdArgs env flds ++ mdls
   error $ "No mhsBuildLib\n" ++ show args
 
 mhsInstallLib :: Env -> Section -> IO ()

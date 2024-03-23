@@ -218,16 +218,9 @@ buildExe env sect@(Section _ _ flds) = do
 
 buildLib :: Env -> Section -> IO ()
 buildLib env sect@(Section _ _ flds) = do
-  let deps = getBuildDepends flds
-      pkgs = [ p | (p, _, _) <- deps ]
+  let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
   buildPkgLib (backend env) env sect
-
-getBuildDepends :: [Field] -> [(Item, [Item], Maybe VersionRange)]
-getBuildDepends fs =
-  case [ d | Field "build-depends" (VPkgs d) <- fs ] of
-    [d] -> d
-    _   -> []
 
 checkDep :: Env -> PackageName -> IO ()
 checkDep _env pkg | pkg `elem` builtinPackages = return ()
@@ -258,10 +251,11 @@ cmdClean env _ = rmrf env (distDir env)
 -----------------------------------------
 
 cmdParse :: Env -> [String] -> IO ()
-cmdParse env [fn] = do
+cmdParse _env [fn] = do
   rfile <- readFile fn
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
       ncbl = normalize info cbl
   --putStrLn $ showCabal cbl
   putStrLn $ showCabal ncbl
+cmdParse _ _ = undefined
