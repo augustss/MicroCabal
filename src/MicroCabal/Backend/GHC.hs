@@ -106,7 +106,8 @@ ghcInstallExe :: Env -> Section -> Section -> IO ()
 ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
   let bin = distDir env ++ binGhc ++ name
       binDir = cabalDir env ++ "/bin"
-  cp env bin binDir
+  mkdir env binDir
+  cp env bin (binDir ++ "/" ++ name)
 
 ghcInstallLib :: Env -> Section -> Section -> IO ()
 ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
@@ -116,7 +117,7 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
   let namever = name ++ "-" ++ showVersion vers
       destDir = ghc ++ "/" ++ namever
       vers = getVersion glob "version"
-      arch = destDir ++ "/" ++ "libHS" ++ namever ++ ".a"
+      arch = destDir ++ "/" ++ "libHS" ++ namever ++ "-mcabal.a"
   mkdir env destDir
   rmrf env arch
   cmd env $ "ar -c -r -s " ++ arch ++ " `find " ++ buildDir ++ " -name '*.o'`"
@@ -137,6 +138,8 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
         , "exposed-modules: " ++ unwords mdls
         , "import-dirs: " ++ destDir
         , "library-dirs: " ++ destDir
+        , "library-dirs-static: " ++ destDir
+        , "hs-libraries: HS" ++ key
         , "depends: " ++ unwords depends
         ]
       depends = []  -- XXX
