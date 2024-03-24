@@ -16,8 +16,8 @@ data Env = Env {
 data Backend = Backend {
   backendName    :: String,                                 -- name of backaned
   doesPkgExist   :: Env -> PackageName        -> IO Bool,   -- is the package available in the database?
-  buildPkgExe    :: Env -> Section            -> IO (),     -- build executable the current directory
-  buildPkgLib    :: Env -> Section            -> IO (),     -- build the package in the current directory
+  buildPkgExe    :: Env -> Section -> Section -> IO (),     -- build executable the current directory
+  buildPkgLib    :: Env -> Section -> Section -> IO (),     -- build the package in the current directory
   installPkgExe  :: Env -> Section -> Section -> IO (),     -- install the package from the current directory
   installPkgLib  :: Env -> Section -> Section -> IO ()      -- install the package from the current directory
   }

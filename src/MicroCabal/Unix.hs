@@ -5,6 +5,7 @@ module MicroCabal.Unix(
   tarx,
   rmrf,
   cp,
+  copyFiles,
   ) where
 import Control.Exception
 import Control.Monad
@@ -69,3 +70,7 @@ cp :: Env -> FilePath -> FilePath -> IO ()
 cp env s d = do
   cmd env $ "rm -f " ++ d
   cmd env $ "cp " ++ s ++ " " ++ d
+
+copyFiles :: Env -> FilePath -> [FilePath] -> FilePath -> IO ()
+copyFiles env src fns tgt = do
+  cmd env $ "cd " ++ src ++ "; tar cf - " ++ unwords fns ++ " | (cd " ++ tgt ++ "; tar xf - )"

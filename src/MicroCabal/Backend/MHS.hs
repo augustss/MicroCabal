@@ -48,8 +48,8 @@ setupStdArgs _env flds =
 binMhs :: String
 binMhs  = "/bin/ghc/"
 
-mhsBuildExe :: Env -> Section -> IO ()
-mhsBuildExe env (Section _ name flds) = do
+mhsBuildExe :: Env -> Section -> Section -> IO ()
+mhsBuildExe env _ (Section _ name flds) = do
   initDB env
   let mainIs  = getFieldString  flds         "main-is"
       srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
@@ -74,8 +74,8 @@ findMainIs env (d:ds) fn = do
    else
     findMainIs env ds fn
 
-mhsBuildLib :: Env -> Section -> IO ()
-mhsBuildLib env (Section _ name flds) = do
+mhsBuildLib :: Env -> Section -> Section -> IO ()
+mhsBuildLib env _ (Section _ name flds) = do
   initDB env
   let mdls = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
       args = unwords $ ["-P" ++ name] ++

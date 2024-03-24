@@ -1,5 +1,6 @@
 module MicroCabal.Backend.GHC(ghcBackend) where
 import Control.Monad
+import Data.Version
 import System.Directory
 import MicroCabal.Cabal
 import MicroCabal.Env
@@ -50,7 +51,7 @@ setupStdArgs env flds = do
       cppOpts = getFieldStrings flds []      "cpp-options"
       deps    = getBuildDependsPkg flds
   buildDir <- getBuildDir env
-  return $ [ "-outputdir", buildDir, "-package-db=" ++ db, "-w"] ++
+  return $ [ "-package-env=-", "-package-db=" ++ db, "-outputdir=" ++ buildDir, "-w"] ++
            map ("-i" ++) srcDirs ++
            map ("-X" ++) exts ++
            map ("-package " ++) deps ++
@@ -59,8 +60,8 @@ setupStdArgs env flds = do
 binGhc :: String
 binGhc  = "/bin/ghc/"
 
-ghcBuildExe :: Env -> Section -> IO ()
-ghcBuildExe env (Section _ name flds) = do
+ghcBuildExe :: Env -> Section -> Section -> IO ()
+ghcBuildExe env _ (Section _ name flds) = do
   initDB env
   let mainIs  = getFieldString flds "main-is"
       srcDirs = getFieldStrings flds ["."] "hs-source-dirs"
@@ -68,7 +69,7 @@ ghcBuildExe env (Section _ name flds) = do
   mkdir env $ distDir env ++ binGhc
   mainIs' <- findMainIs env srcDirs mainIs
   stdArgs <- setupStdArgs env flds
-  let args    = unwords $ stdArgs ++ ["-o", bin, "--make", mainIs']
+  let args    = unwords $ ["-O"] ++ stdArgs ++ ["-o", bin, "--make", mainIs']
   when (verbose env >= 0) $
     putStrLn $ "Build executable " ++ bin ++ " with ghc"
   cmd env $ "ghc " ++ args
@@ -83,12 +84,20 @@ findMainIs env (d:ds) fn = do
    else
     findMainIs env ds fn
 
-ghcBuildLib :: Env -> Section -> IO ()
-ghcBuildLib env (Section _ name flds) = do
+getExposedModules :: [Field] -> [String]
+getExposedModules flds = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
+
+ghcBuildLib :: Env -> Section -> Section -> IO ()
+ghcBuildLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
   stdArgs <- setupStdArgs env flds
-  let mdls = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
-      args = unwords $ stdArgs ++ ["--make", "-no-link" ] ++ mdls
+  let mdls = getExposedModules flds
+      ver  = getVersion glob "version"
+      args = unwords $ ["-O"] ++ stdArgs ++
+                       ["--make", "-no-link", "-this-unit-id", key ] ++
+                       ["-fbuilding-cabal-package", "-static" ] ++
+                       mdls
+      key = name ++ "-" ++ showVersion ver ++ "-mcabal"
   when (verbose env >= 0) $
     putStrLn $ "Build library " ++ name ++ " with ghc"
   cmd env $ "ghc " ++ args
@@ -100,12 +109,38 @@ ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
   cp env bin binDir
 
 ghcInstallLib :: Env -> Section -> Section -> IO ()
-ghcInstallLib env (Section _ _ glob) (Section _ name _) = do
+ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
   buildDir <- getBuildDir env
   ghc <- getGhcDir env
-  let destDir = ghc ++ "/" ++ name ++ "-" ++ vers
-      vers = getFieldString glob "version"
-      arch = destDir ++ "/" ++ "libHS" ++ name ++ ".a"
+  let namever = name ++ "-" ++ showVersion vers
+      destDir = ghc ++ "/" ++ namever
+      vers = getVersion glob "version"
+      arch = destDir ++ "/" ++ "libHS" ++ namever ++ ".a"
+  mkdir env destDir
+  rmrf env arch
   cmd env $ "ar -c -r -s " ++ arch ++ " `find " ++ buildDir ++ " -name '*.o'`"
-  undefined
+
+  let files = map mdlToHi mdls
+      mdls = getExposedModules flds
+      mdlToHi = (++ ".hi") . map (\ c -> if c == '.' then '/' else c)
+  copyFiles env buildDir files destDir
+
+  db <- getGhcDir env
+  let desc = unlines
+        [ "name: " ++ name
+        , "version: " ++ showVersion vers
+        , "visibility: public"
+        , "id: " ++ key
+        , "key: " ++ key
+        , "exposed: True"
+        , "exposed-modules: " ++ unwords mdls
+        , "import-dirs: " ++ destDir
+        , "library-dirs: " ++ destDir
+        , "depends: " ++ unwords depends
+        ]
+      depends = []  -- XXX
+      key = namever ++ "-mcabal"
+      pkgFn = db ++ "/" ++ key ++ ".conf"
+  writeFile pkgFn desc
+  cmd env $ "ghc-pkg update --package-db=" ++ db ++ " " ++ pkgFn

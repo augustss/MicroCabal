@@ -197,30 +197,35 @@ cmdBuild env [pkg] = do
   cmdBuild env []
 cmdBuild _ _ = usage
 
+getGlobal :: Cabal -> Section
+getGlobal (Cabal sects) =
+  fromMaybe (error "no global section") $ listToMaybe [ s | s@(Section "global" _ _) <- sects ]
+
 build :: Env -> IO ()
 build env = do
   fn <- findCabalFile env
   rfile <- readFile fn
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
-      Cabal sects = normalize info cbl
-      sect s@(Section "executable" _ _) = buildExe env s
-      sect s@(Section "library"    _ _) = buildLib env s
+      ncbl@(Cabal sects) = normalize info cbl
+      glob = getGlobal ncbl
+      sect s@(Section "executable" _ _) = buildExe env glob s
+      sect s@(Section "library"    _ _) = buildLib env glob s
       sect _ = return ()
   mapM_ sect sects
 
-buildExe :: Env -> Section -> IO ()
-buildExe env sect@(Section _ _ flds) = do
+buildExe :: Env -> Section -> Section -> IO ()
+buildExe env glob sect@(Section _ _ flds) = do
   let deps = getBuildDepends flds
       pkgs = [ p | (p, _, _) <- deps ]
   mapM_ (checkDep env) pkgs
-  buildPkgExe (backend env) env sect
+  buildPkgExe (backend env) env glob sect
 
-buildLib :: Env -> Section -> IO ()
-buildLib env sect@(Section _ _ flds) = do
+buildLib :: Env -> Section -> Section -> IO ()
+buildLib env glob sect@(Section _ _ flds) = do
   let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
-  buildPkgLib (backend env) env sect
+  buildPkgLib (backend env) env glob sect
 
 checkDep :: Env -> PackageName -> IO ()
 checkDep _env pkg | pkg `elem` builtinPackages = return ()
@@ -231,7 +236,7 @@ checkDep env pkg = do
     error $ "dependency not installed: " ++ pkg
 
 builtinPackages :: [String]
-builtinPackages = ["base", "directory", "process", "bytestring", "text", "fail"]
+builtinPackages = ["base", "directory", "process", "bytestring", "text", "fail", "time"]
 
 -----------------------------------------
 
@@ -247,8 +252,8 @@ install env = do
   rfile <- readFile fn
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
-      Cabal sects = normalize info cbl
-      glob = fromMaybe (error "no global section") $ listToMaybe [ s | s@(Section "global" _ _) <- sects ]
+      ncbl@(Cabal sects) = normalize info cbl
+      glob = getGlobal ncbl
       sect s@(Section "executable" _ _) = installExe env glob s
       sect s@(Section "library"    _ _) = installLib env glob s
       sect _ = return ()

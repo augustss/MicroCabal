@@ -15,6 +15,7 @@ module MicroCabal.Cabal(
   getFieldStrings,
   getBuildDepends,
   getBuildDependsPkg,
+  getVersion,
   ) where
 import Data.Version
 
@@ -102,7 +103,7 @@ getFieldString :: [Field] -> FieldName -> String
 getFieldString flds n =
   case [ s | Field f (VItem s) <- flds, f == n ] of
     [s] -> s
-    _   -> error $ "field not found: " ++ show n
+    _   -> error $ "field not found: " ++ show n ++ "\n" ++ unlines (map showField flds)
 
 getFieldStrings :: [Field] -> [String] -> FieldName -> [String]
 getFieldStrings flds def n =
@@ -118,3 +119,9 @@ getBuildDepends fs =
 
 getBuildDependsPkg :: [Field] -> [String]
 getBuildDependsPkg = map (\ (p,_,_) -> p) . getBuildDepends
+
+getVersion :: [Field] -> String -> Version
+getVersion flds n =
+  case [ s | Field f (VVersion s) <- flds, f == n ] of
+    [s] -> s
+    _   -> error $ "field not found: " ++ show n ++ "\n" ++ unlines (map showField flds)
