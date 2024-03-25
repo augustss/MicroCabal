@@ -4,6 +4,7 @@ import Data.Version
 import System.Directory
 import MicroCabal.Cabal
 import MicroCabal.Env
+import MicroCabal.Parse(readVersion)
 import MicroCabal.Unix
 
 mhsBackend :: Backend
@@ -17,8 +18,9 @@ mhsBackend = Backend {
   }
 
 mhsNameVers :: Env -> IO (String, Version)
-mhsNameVers _ =
-  return ("mhs", makeVersion [0,9,8,0]) -- XXX
+mhsNameVers env = do
+  v <- readVersion . takeWhile (/= '\n') <$> cmdOut env "mhs --numeric-version"
+  return ("mhs", v)
 
 getMhsDir :: Env -> IO FilePath
 getMhsDir env = do
