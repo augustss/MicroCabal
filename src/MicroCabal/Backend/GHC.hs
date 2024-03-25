@@ -109,6 +109,11 @@ ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
   mkdir env binDir
   cp env bin (binDir ++ "/" ++ name)
 
+getPackageId :: Env -> PackageName -> IO PackageName
+getPackageId env n = do
+  r <- cmdOut env $ "ghc-pkg field " ++ n ++ " id"  -- returns "id: pkg-id"
+  return $ last $ words r
+
 ghcInstallLib :: Env -> Section -> Section -> IO ()
 ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
@@ -128,6 +133,9 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
   copyFiles env buildDir files destDir
 
   db <- getGhcDir env
+  let extraLibs = getFieldStrings flds [] "extra-libraries"
+      deps = getBuildDependsPkg flds
+  depends <- mapM (getPackageId env) deps
   let desc = unlines
         [ "name: " ++ name
         , "version: " ++ showVersion vers
@@ -140,9 +148,9 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
         , "library-dirs: " ++ destDir
         , "library-dirs-static: " ++ destDir
         , "hs-libraries: HS" ++ key
+        , "extra-libraries: " ++ unwords extraLibs
         , "depends: " ++ unwords depends
         ]
-      depends = []  -- XXX
       key = namever ++ "-mcabal"
       pkgFn = db ++ "/" ++ key ++ ".conf"
   writeFile pkgFn desc
