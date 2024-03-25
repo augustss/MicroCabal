@@ -4,11 +4,12 @@ import Data.Version
 import System.Directory
 import MicroCabal.Cabal
 import MicroCabal.Env
+import MicroCabal.Parse(readVersion)
 import MicroCabal.Unix
 
 ghcBackend :: Backend
 ghcBackend = Backend {
-  backendName = "ghc",
+  backendNameVers = ghcNameVers,
   doesPkgExist = ghcExists,
   buildPkgExe = ghcBuildExe,
   buildPkgLib = ghcBuildLib,
@@ -16,8 +17,15 @@ ghcBackend = Backend {
   installPkgLib = ghcInstallLib
   }
 
+ghcNameVers :: Env -> IO (String, Version)
+ghcNameVers env = do
+  v <- readVersion . takeWhile (/= '\n') <$> cmdOut env "ghc --numeric-version"
+  return ("ghc", v)
+
 getGhcName :: Env -> IO FilePath
-getGhcName env = ("ghc-" ++) . takeWhile (/= '\n') <$> cmdOut env "ghc --numeric-version"
+getGhcName env = do
+  (n, v) <- ghcNameVers env
+  return $ n ++ "-" ++ showVersion v
 
 getGhcDir :: Env -> IO FilePath
 getGhcDir env = ((cabalDir env ++ "/") ++) <$> getGhcName env

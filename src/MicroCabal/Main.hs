@@ -205,8 +205,9 @@ build :: Env -> IO ()
 build env = do
   fn <- findCabalFile env
   rfile <- readFile fn
+  comp <- backendNameVers (backend env) env
   let cbl = parseCabal fn rfile
-      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
+      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
       glob = getGlobal ncbl
       sect s@(Section "executable" _ _) = buildExe env glob s
@@ -250,8 +251,9 @@ install :: Env -> IO ()
 install env = do
   fn <- findCabalFile env
   rfile <- readFile fn
+  comp <- backendNameVers (backend env) env
   let cbl = parseCabal fn rfile
-      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
+      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
       glob = getGlobal ncbl
       sect s@(Section "executable" _ _) = installExe env glob s
@@ -278,10 +280,11 @@ cmdClean env _ = rmrf env (distDir env)
 -----------------------------------------
 
 cmdParse :: Env -> [String] -> IO ()
-cmdParse _env [fn] = do
+cmdParse env [fn] = do
   rfile <- readFile fn
+  comp <- backendNameVers (backend env) env
   let cbl = parseCabal fn rfile
-      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = (I.compilerName, I.compilerVersion) }
+      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
       ncbl = normalize info cbl
   --putStrLn $ showCabal cbl
   putStrLn $ showCabal ncbl

@@ -14,7 +14,7 @@ data Env = Env {
   }
 
 data Backend = Backend {
-  backendName    :: String,                                 -- name of backaned
+  backendNameVers:: Env ->                       IO (String, Version), -- name and version
   doesPkgExist   :: Env -> PackageName        -> IO Bool,   -- is the package available in the database?
   buildPkgExe    :: Env -> Section -> Section -> IO (),     -- build executable the current directory
   buildPkgLib    :: Env -> Section -> Section -> IO (),     -- build the package in the current directory

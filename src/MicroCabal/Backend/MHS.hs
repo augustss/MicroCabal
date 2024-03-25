@@ -1,5 +1,6 @@
 module MicroCabal.Backend.MHS(mhsBackend) where
 import Control.Monad
+import Data.Version
 import System.Directory
 import MicroCabal.Cabal
 import MicroCabal.Env
@@ -7,7 +8,7 @@ import MicroCabal.Unix
 
 mhsBackend :: Backend
 mhsBackend = Backend {
-  backendName = "mhs",
+  backendNameVers = mhsNameVers,
   doesPkgExist = mhsExists,
   buildPkgExe = mhsBuildExe,
   buildPkgLib = mhsBuildLib,
@@ -15,9 +16,14 @@ mhsBackend = Backend {
   installPkgLib = mhsInstallLib
   }
 
--- XXX needs version info
+mhsNameVers :: Env -> IO (String, Version)
+mhsNameVers _ =
+  return ("mhs", makeVersion [0,9,8,0]) -- XXX
+
 getMhsDir :: Env -> IO FilePath
-getMhsDir env = return $ cabalDir env ++ "/mhs"
+getMhsDir env = do
+  (n, v) <- mhsNameVers env
+  return $ cabalDir env ++ n ++ "-" ++ showVersion v
 
 initDB :: Env -> IO ()
 initDB env = do
