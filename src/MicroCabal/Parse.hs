@@ -60,17 +60,14 @@ instance TokenMachine LexState Char where
   tmNextToken (LS i [] (c:cs)) | c == '\n' = (c, LS     0 [] cs)
                                | otherwise = (c, LS (i+1) [] cs)
   tmNextToken (LS i kks@(k:ks) (c:cs)) | c /= '\n' = (c, LS (i+1) kks cs)
-                                       | Just cs' <- skipEmpty cs = tmNextToken (LS i kks cs')
                                        | otherwise =
-    let lead 0     _             =
---          trace ("Just NL kks=" ++ show kks ++ " cs=" ++ show (take 10 cs))
-          ('\n', LS 0 kks cs)              -- There are at least k leading spaces
-        lead j (x:xs) | x == ' ' = lead (j-1) xs                    -- Count spaces
---                      | x == '-' = ('\n', LS 0 kks cs)
-        lead _     _             =
---          trace ("insert FS kks=" ++ show kks ++ " cs=" ++ show (take 10 cs))
-          (fieldSep, LS 0 ks (c:cs))                 -- Fewer than k spaces.  Generate FS, pop, and try again.
-    in  lead (k+1) cs
+    case skipEmpty cs of
+      Just cs' -> tmNextToken (LS i kks cs')
+      _ ->
+        let lead 0     _             = ('\n', LS 0 kks cs)              -- There are at least k leading spaces
+            lead j (x:xs) | x == ' ' = lead (j-1) xs                    -- Count spaces
+            lead _     _             = (fieldSep, LS 0 ks (c:cs))       -- Fewer than k spaces.  Generate FS, pop, and try again.
+        in  lead (k+1) cs
   tmRawTokens (LS _ _ cs) = cs
 
 skipEmpty :: String -> Maybe String

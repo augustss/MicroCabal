@@ -28,12 +28,12 @@ getGhcName env = do
   return $ n ++ "-" ++ showVersion v
 
 getGhcDir :: Env -> IO FilePath
-getGhcDir env = ((cabalDir env ++ "/") ++) <$> getGhcName env
+getGhcDir env = (cabalDir env </>) <$> getGhcName env
 
 getBuildDir :: Env -> IO FilePath
 getBuildDir env = do
   ghc <- getGhcName env
-  return $ distDir env ++ "/build/" ++ ghc
+  return $ distDir env </> "build" </> ghc
 
 initDB :: Env -> IO ()
 initDB env = do
@@ -65,16 +65,16 @@ setupStdArgs env flds = do
            map ("-package " ++) deps ++
            opts ++ cppOpts
 
-binGhc :: String
-binGhc  = "/bin/ghc/"
+binGhc :: FilePath
+binGhc  = "bin" </> "ghc"
 
 ghcBuildExe :: Env -> Section -> Section -> IO ()
 ghcBuildExe env _ (Section _ name flds) = do
   initDB env
   let mainIs  = getFieldString flds "main-is"
       srcDirs = getFieldStrings flds ["."] "hs-source-dirs"
-      bin     = distDir env ++ binGhc ++ name
-  mkdir env $ distDir env ++ binGhc
+      bin     = distDir env </> binGhc </> name
+  mkdir env $ distDir env </> binGhc
   mainIs' <- findMainIs env srcDirs mainIs
   stdArgs <- setupStdArgs env flds
   let args    = unwords $ ["-O"] ++ stdArgs ++ ["-o", bin, "--make", mainIs']
@@ -85,7 +85,7 @@ ghcBuildExe env _ (Section _ name flds) = do
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
 findMainIs _ [] fn = error $ "cannot find " ++ show fn
 findMainIs env (d:ds) fn = do
-  let fn' = d ++ "/" ++ fn
+  let fn' = d </> fn
   b <- doesFileExist fn'
   if b then
     return fn'
@@ -113,9 +113,9 @@ ghcBuildLib env (Section _ _ glob) (Section _ name flds) = do
 ghcInstallExe :: Env -> Section -> Section -> IO ()
 ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
   let bin = distDir env ++ binGhc ++ name
-      binDir = cabalDir env ++ "/bin"
+      binDir = cabalDir env </> "bin"
   mkdir env binDir
-  cp env bin (binDir ++ "/" ++ name)
+  cp env bin (binDir </> name)
 
 getPackageId :: Env -> PackageName -> IO PackageName
 getPackageId env n = do
@@ -128,12 +128,12 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
   buildDir <- getBuildDir env
   ghc <- getGhcDir env
   let namever = name ++ "-" ++ showVersion vers
-      destDir = ghc ++ "/" ++ namever
+      destDir = ghc </> namever
       vers = getVersion glob "version"
-      arch = destDir ++ "/" ++ "libHS" ++ namever ++ "-mcabal.a"
+      archOut = destDir </> "libHS" ++ namever ++ "-mcabal.a"
   mkdir env destDir
-  rmrf env arch
-  cmd env $ "ar -c -r -s " ++ arch ++ " `find " ++ buildDir ++ " -name '*.o'`"
+  rmrf env archOut
+  cmd env $ "ar -c -r -s " ++ archOut ++ " `find " ++ buildDir ++ " -name '*.o'`"
 
   let files = map mdlToHi mdls
       mdls = getExposedModules flds
@@ -160,6 +160,6 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
         , "depends: " ++ unwords depends
         ]
       key = namever ++ "-mcabal"
-      pkgFn = db ++ "/" ++ key ++ ".conf"
+      pkgFn = db </> key ++ ".conf"
   writeFile pkgFn desc
   cmd env $ "ghc-pkg update --package-db=" ++ db ++ " " ++ pkgFn

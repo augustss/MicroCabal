@@ -54,15 +54,15 @@ setupStdArgs _env flds =
       opts ++ cppOpts
 
 binMhs :: String
-binMhs  = "/bin/ghc/"
+binMhs  = "bin" </> "mhs"
 
 mhsBuildExe :: Env -> Section -> Section -> IO ()
 mhsBuildExe env _ (Section _ name flds) = do
   initDB env
   let mainIs  = getFieldString  flds         "main-is"
       srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
-      bin     = distDir env ++ binMhs ++ name
-  mkdir env $ distDir env ++ binMhs
+      bin     = distDir env </> binMhs </> name
+  mkdir env $ distDir env </> binMhs
   mainIs' <- findMainIs env srcDirs mainIs
   let args    = unwords $ setupStdArgs env flds ++
                           ["-o" ++ bin, mainIs']
@@ -75,7 +75,7 @@ mhsBuildExe env _ (Section _ name flds) = do
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
 findMainIs _ [] fn = error $ "cannot find " ++ show fn
 findMainIs env (d:ds) fn = do
-  let fn' = d ++ "/" ++ fn
+  let fn' = d </> fn
   b <- doesFileExist fn'
   if b then
     return fn'
@@ -93,7 +93,7 @@ mhsBuildLib env _ (Section _ name flds) = do
 mhsInstallExe :: Env -> Section -> Section -> IO ()
 mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do
   let bin = distDir env ++ binMhs ++ name
-      binDir = cabalDir env ++ "/bin"
+      binDir = cabalDir env </> "bin"
   cp env bin binDir
 
 mhsInstallLib :: Env -> Section -> Section -> IO ()

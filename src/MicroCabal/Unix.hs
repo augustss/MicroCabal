@@ -6,6 +6,7 @@ module MicroCabal.Unix(
   rmrf,
   cp,
   copyFiles,
+  (</>),
   ) where
 import Control.Exception
 import Control.Monad
@@ -25,7 +26,9 @@ cmd env s = do
   callCommand s
 
 tryCmd :: Env -> String -> IO Bool
-tryCmd env s = catch (cmd env s >> return True) (\ (_ :: SomeException) -> return False)
+tryCmd env s = catch (cmd env s >> return True) f
+  where f :: SomeException -> IO Bool
+        f _ = return False
 
 cmdOut :: Env -> String -> IO String
 cmdOut env s = do
@@ -42,9 +45,9 @@ tmpFile = do
   let tmp = fromMaybe "/tmp" mtmp
       tmplt = "mcabal.txt"
   res <- try $ openTempFile tmp tmplt
-  case res of
+  case res :: Either SomeException (String, Handle) of
     Right x -> return x
-    Left (_::SomeException) -> openTempFile "." tmplt
+    Left  _ -> openTempFile "." tmplt
 
 
 ---------
@@ -74,3 +77,8 @@ cp env s d = do
 copyFiles :: Env -> FilePath -> [FilePath] -> FilePath -> IO ()
 copyFiles env src fns tgt = do
   cmd env $ "cd " ++ src ++ "; tar cf - " ++ unwords fns ++ " | (cd " ++ tgt ++ "; tar xf - )"
+
+-----
+
+(</>) :: FilePath -> FilePath -> FilePath
+x </> y = x ++ "/" ++ y

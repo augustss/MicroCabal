@@ -35,7 +35,7 @@ main = do
 setupEnv :: IO Env
 setupEnv = do
   home <- getEnv "HOME"
-  let cdir = home ++ "/.mcabal"
+  let cdir = home </> ".mcabal"
   return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, backend = mhsBackend }
 
 decodeCommonArgs :: Env -> IO (Env, [String])
@@ -86,7 +86,7 @@ getBestStackage :: Env -> IO URL
 getBestStackage env = do
   -- Get source list
   let dir = cabalDir env
-      fsnaps = dir ++ "/" ++ snapshotsName
+      fsnaps = dir </> snapshotsName
   wget env stackageSourceList fsnaps
   file <- readFile fsnaps
   let snaps = parseSnapshots fsnaps file
@@ -103,8 +103,8 @@ cmdUpdate env _args = do
   when (verbose env >= 0) $
     putStrLn "Retrieving Stackage package list"
   let dir = cabalDir env
-      stk = dir ++ "/" ++ snapshotName
-      fpkgs = dir ++ "/" ++ packageListName
+      stk = dir </> snapshotName
+      fpkgs = dir </> packageListName
   mkdir env dir
   url <- getBestStackage env
   wget env url stk
@@ -133,7 +133,7 @@ hackageSrcURL = "https://hackage.haskell.org/package/"
 getPackageList :: Env -> IO [StackagePackage]
 getPackageList env = do
   let dir = cabalDir env
-      fpkgs = dir ++ "/" ++ packageListName
+      fpkgs = dir </> packageListName
   b <- doesFileExist fpkgs
   when (not b) $ do
     when (verbose env >= 0) $
@@ -147,16 +147,16 @@ getPackageInfo env pkg = do
   return $ fromMaybe (error $ "getPackageInfo: no package " ++ pkg) $ listToMaybe $ filter ((== pkg) . stName) pkgs
 
 dirPackage :: Env -> FilePath
-dirPackage env = cabalDir env ++ "/packages"
+dirPackage env = cabalDir env </> "packages"
 
 dirForPackage :: Env -> StackagePackage -> FilePath
-dirForPackage env st = dirPackage env ++ "/" ++ stName st ++ "-" ++ showVersion (stVersion st)
+dirForPackage env st = dirPackage env </> stName st ++ "-" ++ showVersion (stVersion st)
 
 cmdFetch :: Env -> [String] -> IO ()
 cmdFetch env [pkg] = do
   st <- getPackageInfo env pkg
   let pkgs = stName st ++ "-" ++ showVersion (stVersion st)
-      url  = URL $ hackageSrcURL ++ pkgs ++ "/" ++ pkgz
+      url  = URL $ hackageSrcURL ++ pkgs </> pkgz
       pkgz = pkgs ++ ".tar.gz"
       pdir = dirForPackage env st
       file = pdir ++ ".tar.gz"
