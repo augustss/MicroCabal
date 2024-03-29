@@ -69,6 +69,10 @@ mhsBuildExe env _ (Section _ name flds) = do
   when (verbose env >= 0) $
     putStrLn $ "Build " ++ bin ++ " with mhs"
   --putStrLn $ "mhs " ++ args
+  mhs env args
+
+mhs :: Env -> String -> IO ()
+mhs env args =
   cmd env $ "MHSDIR=/usr/local/lib/mhs " ++    -- temporary hack
             "mhs " ++ args
 
@@ -83,12 +87,14 @@ findMainIs env (d:ds) fn = do
     findMainIs env ds fn
 
 mhsBuildLib :: Env -> Section -> Section -> IO ()
-mhsBuildLib env _ (Section _ name flds) = do
+mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
   let mdls = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
-      args = unwords $ ["-P" ++ name] ++
+      vers = getVersion glob "version"
+      namever = name ++ "-" ++ showVersion vers
+      args = unwords $ ["-P" ++ namever, "-o" ++ namever ++ ".pkg"] ++
                        setupStdArgs env flds ++ mdls
-  error $ "No mhsBuildLib\n" ++ show args
+  mhs env args
 
 mhsInstallExe :: Env -> Section -> Section -> IO ()
 mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do
@@ -97,6 +103,8 @@ mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do
   cp env bin binDir
 
 mhsInstallLib :: Env -> Section -> Section -> IO ()
-mhsInstallLib env _glob _sect = do
+mhsInstallLib env (Section _ _ glob) (Section _ name _) = do
   initDB env
-  undefined
+  let vers = getVersion glob "version"
+      namever = name ++ "-" ++ showVersion vers
+  mhs env $ "-Q " ++ namever ++ ".pkg"
