@@ -76,8 +76,7 @@ snapshotName = "snapshot.yaml"
 
 -- This is a JSON document describing enumerating all releases.
 stackageSourceList :: URL
-stackageSourceList = URL "https://www.stackage.org/download/snapshots.json"
-
+stackageSourceList = URL "https://stackage-haddock.haskell.org/snapshots.json
 snapshotSource :: String
 snapshotSource = "https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/" -- lts/22/13.yaml
 
