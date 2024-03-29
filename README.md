@@ -7,3 +7,5 @@ which Cabal is definitely not.
 
 The implementation assumes a Unix-like system with commands like `wget` and `tar`.
 
+To get a consistent set of packages MicroCabal uses Stackage to find compatible packages. So in a sense, MicroCabal is more like a MicroStackage. 
+
