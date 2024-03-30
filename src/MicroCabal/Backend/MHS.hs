@@ -100,9 +100,9 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
 
 mhsInstallExe :: Env -> Section -> Section -> IO ()
 mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do
-  let bin = distDir env ++ binMhs ++ name
+  let bin = distDir env </> binMhs </> name
       binDir = cabalDir env </> "bin"
-  cp env bin binDir
+  cp env bin (binDir </> name)
 
 mhsInstallLib :: Env -> Section -> Section -> IO ()
 mhsInstallLib env (Section _ _ glob) (Section _ name _) = do
