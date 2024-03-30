@@ -25,7 +25,7 @@ mhsNameVers env = do
 getMhsDir :: Env -> IO FilePath
 getMhsDir env = do
   (n, v) <- mhsNameVers env
-  return $ cabalDir env ++ n ++ "-" ++ showVersion v
+  return $ cabalDir env ++ "/" ++ n ++ "-" ++ showVersion v
 
 initDB :: Env -> IO ()
 initDB env = do
@@ -36,9 +36,10 @@ initDB env = do
     mkdir env dir
 
 mhsExists :: Env -> PackageName -> IO Bool
-mhsExists env _pkgname = do
-  _dir <- getMhsDir env
-  return False
+mhsExists env pkgname = do
+  dir <- getMhsDir env
+  pkgs <- listDirectory $ dir ++ "/packages"
+  return $ any ((== pkgname) . init . dropWhileEnd (/= '-')) pkgs
 
 setupStdArgs :: Env -> [Field] -> [String]
 setupStdArgs _env flds =
@@ -73,8 +74,9 @@ mhsBuildExe env _ (Section _ name flds) = do
 
 mhs :: Env -> String -> IO ()
 mhs env args =
+  let flg = if verbose env == 1 then "-l " else if verbose env > 1 then "-v " else "" in
   cmd env $ "MHSDIR=/usr/local/lib/mhs " ++    -- temporary hack
-            "mhs " ++ args
+            "mhs " ++ flg ++ args
 
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
 findMainIs _ [] fn = error $ "cannot find " ++ show fn

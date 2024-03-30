@@ -34,7 +34,7 @@ cmdOut :: Env -> String -> IO String
 cmdOut env s = do
   (fn, h) <- tmpFile
   hClose h
-  cmd env $ s ++ ">" ++ fn
+  cmd env $ s ++ " >" ++ fn
   o <- readFile fn
   removeFile fn
   return o
