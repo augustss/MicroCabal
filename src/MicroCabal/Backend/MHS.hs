@@ -1,9 +1,10 @@
 module MicroCabal.Backend.MHS(mhsBackend) where
 import Control.Monad
-import Data.Maybe (fromMaybe)
+import Data.List(dropWhileEnd)
+import Data.Maybe(fromMaybe)
 import Data.Version
 import System.Directory
-import System.Environment (lookupEnv)
+import System.Environment(lookupEnv)
 import MicroCabal.Cabal
 import MicroCabal.Env
 import MicroCabal.Parse(readVersion)
@@ -18,6 +19,8 @@ mhsBackend = Backend {
   installPkgExe = mhsInstallExe,
   installPkgLib = mhsInstallLib
   }
+
+
 
 mhsNameVers :: Env -> IO (String, Version)
 mhsNameVers env = do
@@ -78,8 +81,7 @@ mhs :: Env -> String -> IO ()
 mhs env args = do
   let flg = if verbose env == 1 then "-l " else if verbose env > 1 then "-v " else ""
   mhsDir <- fmap (fromMaybe "/usr/local/lib/mhs") (lookupEnv "MHSDIR")
-  cmd env $ "MHSDIR=" ++ mhsDir ++ " " ++    -- temporary hack
-            "mhs " ++ flg ++ args
+  cmd env $ "MHSDIR=" ++ mhsDir ++ " mhs " ++ flg ++ args
 
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
 findMainIs _ [] fn = error $ "cannot find " ++ show fn
