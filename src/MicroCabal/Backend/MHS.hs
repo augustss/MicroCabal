@@ -20,8 +20,6 @@ mhsBackend = Backend {
   installPkgLib = mhsInstallLib
   }
 
-
-
 mhsNameVers :: Env -> IO (String, Version)
 mhsNameVers env = do
   v <- readVersion . takeWhile (/= '\n') <$> cmdOut env "mhs --numeric-version"
