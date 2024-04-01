@@ -17,12 +17,16 @@ import MicroCabal.StackageList
 import MicroCabal.Unix
 import MicroCabal.YAML
 
+version :: String
+version = "MicroCabal 0.1.0.0"
+
 main :: IO ()
 main = do
   (env, args) <- decodeCommonArgs =<< setupEnv
 
   case args of
     [] -> usage
+    ["--version"]  -> putStrLn version
     "build"   : as -> cmdBuild   env as
     "clean"   : as -> cmdClean   env as
     "fetch"   : as -> cmdFetch   env as
