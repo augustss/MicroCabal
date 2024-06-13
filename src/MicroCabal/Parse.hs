@@ -269,7 +269,7 @@ pField = do
     pure $ If c t e
    else do
     pColon
-    traceM $ "parser " ++ fn
+--    traceM $ "parser " ++ fn
     let p = getParser fn
     v <- p
     pFieldSep
