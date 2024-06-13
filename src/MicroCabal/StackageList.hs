@@ -32,7 +32,7 @@ readPackage spkg =
   case words spkg of
     name : vers : hide : flgs ->
       StackagePackage { stName = name, stVersion = readVersion vers, stHidden = read hide, stFlags = map flag flgs }
-    _ -> error "readPackage"
+    x -> error $ "readPackage" ++ show x
   where flag s = (n, read (drop 1 b)) where (n, b) = span (/= '=') s
 
 yamlToStackageList :: YAMLValue -> [StackagePackage]
