@@ -1,5 +1,6 @@
 module MicroCabal.Backend.MHS(mhsBackend) where
 import Control.Monad
+import Data.List
 import Data.Version
 import System.Directory
 import MicroCabal.Cabal
@@ -49,7 +50,8 @@ setupStdArgs _env flds =
       cppOpts = getFieldStrings flds []      "cpp-options"
       exts'   = filter (`elem` mhsX) exts
       mhsX    = ["CPP"]
-  in  map ("-i" ++) srcDirs ++
+  in  ["-i"] ++
+      map ("-i" ++) srcDirs ++
       map ("-X" ++) exts' ++
       opts ++ cppOpts
 
@@ -65,7 +67,8 @@ mhsBuildExe env _ (Section _ name flds) = do
   mkdir env $ distDir env </> binMhs
   mainIs' <- findMainIs env srcDirs mainIs
   let args    = unwords $ setupStdArgs env flds ++
-                          ["-o" ++ bin, mainIs']
+                          ["-a."
+                          ,"-o" ++ bin, mainIs']
   when (verbose env >= 0) $
     putStrLn $ "Build " ++ bin ++ " with mhs"
   --putStrLn $ "mhs " ++ args
@@ -74,6 +77,11 @@ mhsBuildExe env _ (Section _ name flds) = do
 mhs :: Env -> String -> IO ()
 mhs env args =
   cmd env $ "MHSDIR=/usr/local/lib/mhs " ++    -- temporary hack
+            "mhs " ++ args
+
+mhsOut :: Env -> String -> IO String
+mhsOut env args =
+  cmdOut env $ "MHSDIR=/usr/local/lib/mhs " ++    -- temporary hack
             "mhs " ++ args
 
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
@@ -90,11 +98,20 @@ mhsBuildLib :: Env -> Section -> Section -> IO ()
 mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
   let mdls = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
+      omdls = getFieldStrings flds [] "other-modules"
       vers = getVersion glob "version"
       namever = name ++ "-" ++ showVersion vers
-      args = unwords $ ["-P" ++ namever, "-o" ++ namever ++ ".pkg"] ++
-                       setupStdArgs env flds ++ mdls
+      pkgfn = namever ++ ".pkg"
+      args = unwords $ ["-P" ++ namever, "-o" ++ pkgfn] ++
+                       setupStdArgs env flds ++
+                       ["-a."] ++
+                       mdls
   mhs env args
+  pkgmdls <- lines <$> mhsOut env ("-L" ++ pkgfn)
+  let bad = pkgmdls \\ (mdls ++ omdls)
+  when (not (null bad)) $ do
+    putStrLn "Warning: package modules not mentioned in exposed-modules nor other-modules"
+    mapM_ putStrLn bad
 
 mhsInstallExe :: Env -> Section -> Section -> IO ()
 mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do

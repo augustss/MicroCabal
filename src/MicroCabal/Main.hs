@@ -216,14 +216,16 @@ build env = do
   mapM_ sect sects
 
 buildExe :: Env -> Section -> Section -> IO ()
-buildExe env glob sect@(Section _ _ flds) = do
+buildExe env glob sect@(Section _ name flds) = do
+  putStrLn $ "Building executable " ++ name
   let deps = getBuildDepends flds
       pkgs = [ p | (p, _, _) <- deps ]
   mapM_ (checkDep env) pkgs
   buildPkgExe (backend env) env glob sect
 
 buildLib :: Env -> Section -> Section -> IO ()
-buildLib env glob sect@(Section _ _ flds) = do
+buildLib env glob sect@(Section _ name flds) = do
+  putStrLn $ "Building library " ++ name
   let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
   buildPkgLib (backend env) env glob sect
@@ -262,10 +264,14 @@ install env = do
   mapM_ sect sects
 
 installExe :: Env -> Section -> Section -> IO ()
-installExe env = installPkgExe (backend env) env
+installExe env glob sect@(Section _ name _) = do
+  putStrLn $ "Installing executable " ++ name
+  installPkgExe (backend env) env glob sect
 
 installLib :: Env -> Section -> Section -> IO ()
-installLib env = installPkgLib (backend env) env
+installLib env glob sect@(Section _ name _) = do
+  putStrLn $ "Installing library " ++ name
+  installPkgLib (backend env) env glob sect
 
 -----------------------------------------
 

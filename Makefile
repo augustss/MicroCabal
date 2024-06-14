@@ -11,8 +11,12 @@ bin/gmcabal:	src/MicroCabal/*.hs src/MicroCabal/*/*.hs
 
 all:	bin/gmcabal bin/mcabal
 
+install:: bin/mcabal
+	@mkdir -p ~/.mcabal/bin
+	cp bin/mcabal ~/.mcabal/bin
+
 clean:
-	rm -rf ghc-out bin/*
+	rm -rf ghc-out bin/* .mhscache
 	cabal clean
 
 test:	bin/mcabal
