@@ -13,7 +13,7 @@ import Data.Version
 import Text.ParserComb
 import MicroCabal.Cabal
 import MicroCabal.YAML
---import Debug.Trace
+import Debug.Trace
 
 parseCabal :: FilePath -> String -> Cabal
 parseCabal fn rfile = runP pCabalTop fn $ dropCabalComments rfile
@@ -215,13 +215,14 @@ pSpaceList :: P a -> P [a]
 pSpaceList p = esepBy p pWhite
 
 pOptCommaList :: P a -> P [a]
-pOptCommaList p = --pSpaceList p <|> pCommaList p
+pOptCommaList p =
     (pStrW "," *> pCommaList' p)   -- it starts with a ',', so it must be comma separated
   <|< do
     a <- p  -- parse one item
     -- now check if we have a comma or not, and pick the parser for the rest
     as <- (pStrW "," *> pCommaList' p) <|< pSpaceList p
     return (a:as)
+  <|< ([] <$ pWhite)
 
 pVComma :: P Value
 pVComma = VItems <$> pCommaList pItem
@@ -268,6 +269,7 @@ pField = do
     pure $ If c t e
    else do
     pColon
+--    traceM $ "parser " ++ fn
     let p = getParser fn
     v <- p
     pFieldSep
@@ -336,7 +338,7 @@ parsers =
   , "cc-options"                     # pVComma
   , "cmm-sources"                    # pVComma
   , "cmm-options"                    # pVComma
-  , "cpp-options"                    # pVComma
+  , "cpp-options"                    # pVOptComma
   , "cxx-options"                    # pVComma
   , "default-extensions"             # pVOptComma
   , "default-language"               # (VItem <$> pItem)

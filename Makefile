@@ -25,3 +25,7 @@ test:	bin/mcabal
 	bin/mcabal parse ../MicroHs/cpphssrc/malcolm-wallace-universe/polyparse-1.12/polyparse.cabal
 	bin/mcabal parse ../MicroHs/cpphssrc/malcolm-wallace-universe/cpphs-1.20.9/cpphs.cabal
 	bin/mcabal parse ../Hackage/optparse-applicative-0.18.1.0/optparse-applicative.cabal
+
+install: bin/mcabal
+	@mkdir -p ~/.mcabal/bin
+	cp bin/mcabal ~/.mcabal/bin

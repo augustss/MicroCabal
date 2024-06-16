@@ -1,8 +1,10 @@
 module MicroCabal.Backend.MHS(mhsBackend) where
 import Control.Monad
-import Data.List
+import Data.List(dropWhileEnd)
+import Data.Maybe(fromMaybe)
 import Data.Version
 import System.Directory
+import System.Environment(lookupEnv)
 import MicroCabal.Cabal
 import MicroCabal.Env
 import MicroCabal.Parse(readVersion)
@@ -26,7 +28,7 @@ mhsNameVers env = do
 getMhsDir :: Env -> IO FilePath
 getMhsDir env = do
   (n, v) <- mhsNameVers env
-  return $ cabalDir env ++ n ++ "-" ++ showVersion v
+  return $ cabalDir env ++ "/" ++ n ++ "-" ++ showVersion v
 
 initDB :: Env -> IO ()
 initDB env = do
@@ -37,9 +39,10 @@ initDB env = do
     mkdir env dir
 
 mhsExists :: Env -> PackageName -> IO Bool
-mhsExists env _pkgname = do
-  _dir <- getMhsDir env
-  return False
+mhsExists env pkgname = do
+  dir <- getMhsDir env
+  pkgs <- listDirectory $ dir ++ "/packages"
+  return $ any ((== pkgname) . init . dropWhileEnd (/= '-')) pkgs
 
 setupStdArgs :: Env -> [Field] -> [String]
 setupStdArgs _env flds =
@@ -78,9 +81,10 @@ mhsBuildExe env _ (Section _ name flds) = do
   mhs env args
 
 mhs :: Env -> String -> IO ()
-mhs env args =
-  cmd env $ "MHSDIR=/usr/local/lib/mhs " ++    -- temporary hack
-            "mhs " ++ args
+mhs env args = do
+  let flg = if verbose env == 1 then "-l " else if verbose env > 1 then "-v " else ""
+  mhsDir <- fmap (fromMaybe "/usr/local/lib/mhs") (lookupEnv "MHSDIR")
+  cmd env $ "MHSDIR=" ++ mhsDir ++ " mhs " ++ flg ++ args
 
 mhsOut :: Env -> String -> IO String
 mhsOut env args =
@@ -118,9 +122,9 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
 
 mhsInstallExe :: Env -> Section -> Section -> IO ()
 mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do
-  let bin = distDir env ++ binMhs ++ name
+  let bin = distDir env </> binMhs </> name
       binDir = cabalDir env </> "bin"
-  cp env bin binDir
+  cp env bin (binDir </> name)
 
 mhsInstallLib :: Env -> Section -> Section -> IO ()
 mhsInstallLib env (Section _ _ glob) (Section _ name _) = do
