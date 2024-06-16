@@ -46,13 +46,16 @@ setupStdArgs _env flds =
   let srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
       defExts = getFieldStrings flds []      "default-extensions"
       exts    = getFieldStrings flds defExts "extensions"
+      oexts   = getFieldStrings flds []      "other-extensions"
       opts    = getFieldStrings flds []      "mhs-options"
       cppOpts = getFieldStrings flds []      "cpp-options"
-      exts'   = filter (`elem` mhsX) exts
+      incs    = getFieldStrings flds []      "include-dirs"
+      exts'   = filter (`elem` mhsX) (exts ++ oexts)
       mhsX    = ["CPP"]
-  in  ["-i"] ++
+  in  -- ["-i"] ++
       map ("-i" ++) srcDirs ++
       map ("-X" ++) exts' ++
+      map ("-I" ++) incs ++
       opts ++ cppOpts
 
 binMhs :: String

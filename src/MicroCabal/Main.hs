@@ -4,6 +4,7 @@ import Data.List
 import Data.Maybe
 import Data.Version
 import System.Environment
+import System.Exit
 import System.Directory
 import qualified System.Info as I
 import Text.Read
@@ -15,7 +16,6 @@ import MicroCabal.Normalize
 import MicroCabal.Parse
 import MicroCabal.StackageList
 import MicroCabal.Unix
-import MicroCabal.YAML
 
 main :: IO ()
 main = do
@@ -49,16 +49,9 @@ decodeCommonArgs env = do
 
 usage :: IO ()
 usage = do
-  putStrLn "\
-\Usage:\n\
-\  mcabal [FLAGS] build [PKG]\n\
-\  mcabal [FLAGS] clean\n\
-\  mcabal [FLAGS] fetch PKG\n\
-\  mcabal [FLAGS] help\n\
-\  mcabal [FLAGS] install\n\
-\  mcabal [FLAGS] update\n\
-\"
-  error "done"
+  env <- setupEnv
+  cmdHelp env []
+  exitWith (ExitFailure 1)
 
 -----------------------------------------
 
@@ -74,7 +67,7 @@ snapshotsName = "snapshots.json"
 snapshotName :: FilePath
 snapshotName = "snapshot.yaml"
 
--- This is a JSON document describing enumerating all releases.
+-- This is a JSON document enumerating all releases.
 stackageSourceList :: URL
 stackageSourceList = URL "https://www.stackage.org/download/snapshots.json"
 
@@ -99,7 +92,7 @@ getBestStackage env = do
   return $ URL $ snapshotSource ++ snap' ++ ".yaml"
 
 cmdUpdate :: Env -> [String] -> IO ()
-cmdUpdate env _args = do
+cmdUpdate env [] = do
   when (verbose env >= 0) $
     putStrLn "Retrieving Stackage package list"
   let dir = cabalDir env
@@ -115,15 +108,18 @@ cmdUpdate env _args = do
 --  putStrLn $ show pkgs
   when (verbose env > 0) $
     putStrLn $ "Write package list to " ++ fpkgs
-  writeFile fpkgs $ unlines $ map showPackage pkgs
+  writeFile fpkgs $ unlines $ map showPackage $ pkgs ++ distPkgs
+cmdUpdate _ _ = usage
 
-cmdTest :: Env -> [String] -> IO ()
-cmdTest _ _ = do
-  let stk = "11.yaml"
-  file <- readFile stk
-  let yml = parseYAML stk file
-  putStrLn $ showYAML yml
-
+-- These packages are part of the ghc distribution, so they are
+-- not in the stackage list.
+-- XXX What to do about versions?
+-- XXX more...
+distPkgs :: [StackagePackage]
+distPkgs =
+  [ StackagePackage "containers" (makeVersion [0,6,8]) False []
+  , StackagePackage "mtl"        (makeVersion [2,3,1]) False []
+  ]
 
 -----------------------------------------
 
@@ -161,13 +157,16 @@ cmdFetch env [pkg] = do
       pdir = dirForPackage env st
       file = pdir ++ ".tar.gz"
   b <- doesDirectoryExist pdir
-  when (not b) $ do
+  if b then
+    when (verbose env > 0) $
+      putStrLn $ "Already in " ++ pdir
+   else do
     mkdir env pdir
     when (verbose env > 0) $
       putStrLn $ "Fetching  " ++ pkgz
     wget env url file
     when (verbose env > 0) $
-      putStrLn $ "Unpacking " ++ pkgz
+      putStrLn $ "Unpacking " ++ pkgz ++ " in " ++ pdir
     tarx env (dirPackage env) file
 cmdFetch _ _ = usage
 
@@ -238,8 +237,9 @@ checkDep env pkg = do
   when (not b) $
     error $ "dependency not installed: " ++ pkg
 
+-- XXX These packages are part of mhs.
 builtinPackages :: [String]
-builtinPackages = ["base", "directory", "process", "bytestring", "text", "fail", "time"]
+builtinPackages = ["array", "base", "deepseq", "directory", "process", "bytestring", "text", "fail", "time"]
 
 -----------------------------------------
 
@@ -276,7 +276,23 @@ installLib env glob sect@(Section _ name _) = do
 -----------------------------------------
 
 cmdHelp :: Env -> [String] -> IO ()
-cmdHelp _ _ = putStrLn "Coming soon"
+cmdHelp _ _ = putStrLn "\
+  \Available commands:\n\
+  \  mcabal [FLAGS] build [PKG]    build in current directory, or the package PKG\n\
+  \  mcabal [FLAGS] clean          clean in the current directory\n\
+  \  mcabal [FLAGS] fetch PKG      fetch files for package PKG\n\
+  \  mcabal [FLAGS] help           show this message\n\
+  \  mcabal [FLAGS] install        build and install in current directory\n\
+  \  mcabal [FLAGS] parse FILE     just parse a Cabal file (for debugging)\n\
+  \  mcabal [FLAGS] update         retrieve new set of consistent packages\n\
+  \\n\
+  \Flags:\n\
+  \  -v                            be more verbose (can be repeated)\n\
+  \  -q                            be quiet\n\
+  \  --ghc                         compile using ghc\n\
+  \  --mhs                         compile using mhs (default)\n\
+  \\n\
+  \"
 
 -----------------------------------------
 
