@@ -382,7 +382,7 @@ parsers =
   , "category"                       # pFreeText
   , "copyright"                      # pFreeText
   , "data-dir"                       # pVSpace
-  , "data-files"                     # pVComma
+  , "data-files"                     # pVOptComma
   , "description"                    # pFreeText
   , "extra-doc-files"                # pVComma
   , "extra-source-files"             # pVOptComma
