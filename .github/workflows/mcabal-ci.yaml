@@ -13,5 +13,4 @@ jobs:
     - name: checkout repo
       uses: actions/checkout@v4
     - name: cabal build
-      run: cabal update; cabal build
-
+      run: cabal build
