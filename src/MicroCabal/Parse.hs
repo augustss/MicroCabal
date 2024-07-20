@@ -13,7 +13,7 @@ import Data.Version
 import Text.ParserComb
 import MicroCabal.Cabal
 import MicroCabal.YAML
-import Debug.Trace
+--import Debug.Trace
 
 parseCabal :: FilePath -> String -> Cabal
 parseCabal fn rfile = runP pCabalTop fn $ dropCabalComments rfile
@@ -310,12 +310,13 @@ pBool = (False <$ pKeyWordNC "false") <|< (True <$ pKeyWordNC "true")
 
 pSection :: P Section
 pSection = pWhite *> (
-      Section <$> pKeyWordNC "common"     <*>           pName <*> pFields
-  <|< Section <$> pKeyWordNC "library"    <*>         libName <*> pFields
-  <|< Section <$> pKeyWordNC "executable" <*>           pName <*> pFields
+      Section <$> pKeyWordNC "common"            <*>    pName <*> pFields
+  <|< Section <$> pKeyWordNC "library"           <*>  libName <*> pFields
+  <|< Section <$> pKeyWordNC "executable"        <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "source-repository" <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "flag"              <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "test-suite"        <*>    pName <*> pFields
+  <|< Section <$> pKeyWordNC "benchmark"         <*>    pName <*> pFields
   )
   where libName = pName <|< pure ""
 
@@ -331,7 +332,7 @@ parsers =
   , "autogen-includes"               # pVOptComma
   , "autogen-modules"                # pVComma
   , "build-depends"                  # pVLibs
-  , "build-tool-depends"             # pVComma -- XXX
+  , "build-tool-depends"             # pVLibs  -- ??? pVComma -- XXX
   , "build-tools"                    # pVComma -- XXX
   , "buildable"                      # (VBool <$> pBool)
   , "c-sources"                      # pVComma
@@ -343,6 +344,7 @@ parsers =
   , "default-extensions"             # pVOptComma
   , "default-language"               # (VItem <$> pItem)
   , "exposed-modules"                # pVOptComma
+  , "reexported-modules"             # pVOptComma
   , "extensions"                     # pVOptComma
   , "extra-bundled-libraries"        # pVComma
   , "extra-dynamic-library-flavours" # pVComma

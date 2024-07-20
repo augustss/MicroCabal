@@ -46,8 +46,14 @@ initDB env = do
 
 ghcExists :: Env -> PackageName -> IO Bool
 ghcExists env pkgname = do
-  dir <- getGhcDir env
-  tryCmd env $ "ghc-pkg --package-db=" ++ dir ++ " describe >/dev/null 2>/dev/null " ++ pkgname
+  -- First try with globally installed GHC packages.
+  ok <- tryCmd env $ "ghc-pkg describe >/dev/null 2>/dev/null " ++ pkgname
+  if ok then
+    return True
+   else do
+    -- Try with packages installed wikh mcabal
+    dir <- getGhcDir env
+    tryCmd env $ "ghc-pkg --package-db=" ++ dir ++ " describe >/dev/null 2>/dev/null " ++ pkgname
 
 setupStdArgs :: Env -> [Field] -> IO [String]
 setupStdArgs env flds = do

@@ -39,10 +39,15 @@ initDB env = do
     mkdir env dir
 
 mhsExists :: Env -> PackageName -> IO Bool
+mhsExists _ pkgname | pkgname `elem` builtinPackages = return True
 mhsExists env pkgname = do
   dir <- getMhsDir env
   pkgs <- listDirectory $ dir ++ "/packages"
   return $ any ((== pkgname) . init . dropWhileEnd (/= '-')) pkgs
+
+-- XXX These packages are part of mhs.
+builtinPackages :: [String]
+builtinPackages = ["array", "base", "deepseq", "directory", "process", "bytestring", "text", "fail", "time"]
 
 setupStdArgs :: Env -> [Field] -> [String]
 setupStdArgs _env flds =

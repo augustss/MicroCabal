@@ -233,16 +233,11 @@ buildLib env glob sect@(Section _ name flds) = do
   buildPkgLib (backend env) env glob sect
 
 checkDep :: Env -> PackageName -> IO ()
-checkDep _env pkg | pkg `elem` builtinPackages = return ()
 checkDep env pkg = do
   let bend = backend env
   b <- doesPkgExist bend env pkg
   when (not b) $
     error $ "dependency not installed: " ++ pkg
-
--- XXX These packages are part of mhs.
-builtinPackages :: [String]
-builtinPackages = ["array", "base", "deepseq", "directory", "process", "bytestring", "text", "fail", "time"]
 
 -----------------------------------------
 
