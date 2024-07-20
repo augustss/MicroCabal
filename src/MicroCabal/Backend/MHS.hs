@@ -36,13 +36,14 @@ initDB env = do
   b <- doesDirectoryExist dir
   when (not b) $ do
     --cmd env $ "mhs-pkg init " ++ dir
-    mkdir env dir
+    mkdir env (dir </> "packages")
 
 mhsExists :: Env -> PackageName -> IO Bool
 mhsExists _ pkgname | pkgname `elem` builtinPackages = return True
 mhsExists env pkgname = do
+  initDB env
   dir <- getMhsDir env
-  pkgs <- listDirectory $ dir ++ "/packages"
+  pkgs <- listDirectory $ dir </> "packages"
   return $ any ((== pkgname) . init . dropWhileEnd (/= '-')) pkgs
 
 -- XXX These packages are part of mhs.

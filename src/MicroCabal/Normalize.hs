@@ -3,6 +3,7 @@ import Data.Function
 import Data.List
 import Data.Maybe
 import MicroCabal.Cabal
+--import Debug.Trace
 
 -- Do some normalization
 --  * computre conditionals and flatten 'if/else'
@@ -54,7 +55,8 @@ reduce info c = reduce' (addFlags c) c
 
 reduce' :: FlagInfo -> Cabal -> Cabal
 reduce' info = mapField red
-  where red (If c t e) | cond info c = concatMap red t
+  where red (If c t e) --x | trace ("if " ++ show (c, cond info c)) False = undefined
+                       | cond info c = concatMap red t
                        | otherwise   = concatMap red e
         red f = [f]
 
@@ -75,4 +77,12 @@ cond info = eval
         eval (Cimpl s mv) = n == s && maybe True (inVersionRange v) mv  where (n, v) = impl info
 
 inVersionRange :: Version -> VersionRange -> Bool
-inVersionRange _ _ = True  -- XXX
+inVersionRange v (VEQ v') = v == v'
+inVersionRange v (VGT v') = v >  v'
+inVersionRange v (VLT v') = v <  v'
+inVersionRange v (VLE v') = v <= v'
+inVersionRange v (VGE v') = v >= v'
+inVersionRange v (VOr vr1 vr2) = inVersionRange v vr1 || inVersionRange v vr2
+inVersionRange v (VAnd vr1 vr2) = inVersionRange v vr1 && inVersionRange v vr2
+inVersionRange v (VEQSet vs) = v `elem` vs
+inVersionRange _ vr = error $ "inVersionRange: not implemented " ++ show vr

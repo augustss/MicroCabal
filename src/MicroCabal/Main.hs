@@ -16,6 +16,7 @@ import MicroCabal.Normalize
 import MicroCabal.Parse
 import MicroCabal.StackageList
 import MicroCabal.Unix
+import MicroCabal.YAML
 
 version :: String
 version = "MicroCabal 0.1.0.0"
@@ -71,13 +72,19 @@ snapshotsName = "snapshots.json"
 snapshotName :: FilePath
 snapshotName = "snapshot.yaml"
 
+-- Name of the nightly snapshot
+nightlyName :: String
+nightlyName = "nightly"
+
 -- This is a JSON document enumerating all releases.
 stackageSourceList :: URL
 stackageSourceList = URL "https://stackage-haddock.haskell.org/snapshots.json"
+
+-- prefix of URL for actual snapshot
 snapshotSource :: String
 snapshotSource = "https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/" -- lts/22/13.yaml
 
--- XX This needs improvement
+-- XXX This needs improvement
 getBestStackage :: Env -> IO URL
 getBestStackage env = do
   -- Get source list
@@ -86,13 +93,24 @@ getBestStackage env = do
   wget env stackageSourceList fsnaps
   file <- readFile fsnaps
   let snaps = parseSnapshots fsnaps file
+{-
+      -- Pick LTS snapshot
       snap = snd $ last $
              [(0::Int, error "no lts snapshots found")] ++
              sort [ (l, r) | (lp, r) <- snaps, Just l <- [stripPrefix "lts-" lp >>= readMaybe] ]
       snap' = map (\ c -> if c == '-' || c == '.' then '/' else c) snap
+      snapURL = URL $ snapshotSource ++ snap' ++ ".yaml"
+-}
+      -- Pick a nightly snapshot
+      snap = fromMaybe (error "no nightly snapshot found") $ lookup nightlyName snaps
+      snap' = fixLeading0 $ map (\ c -> if c == '-' then '/' else c) snap
+      fixLeading0 ('/':'0':cs) = '/' : fixLeading0 cs
+      fixLeading0 (c:cs) = c : fixLeading0 cs
+      fixLeading0 cs = cs
+      snapURL = URL $ snapshotSource ++ snap' ++ ".yaml"
   when (verbose env > 0) $
     putStrLn $ "Picking Stackage snapshot " ++ snap
-  return $ URL $ snapshotSource ++ snap' ++ ".yaml"
+  return $ snapURL
 
 cmdUpdate :: Env -> [String] -> IO ()
 cmdUpdate env [] = do
@@ -107,11 +125,14 @@ cmdUpdate env [] = do
   file <- readFile stk
   let yml = parseYAML stk file
       pkgs = yamlToStackageList yml
+      ghcVersion = yamlToGHCVersion yml
+--  putStrLn $ "==== " ++ ghcVersion
 --  putStrLn $ showYAML yml
 --  putStrLn $ show pkgs
   when (verbose env > 0) $
     putStrLn $ "Write package list to " ++ fpkgs
   writeFile fpkgs $ unlines $ map showPackage $ pkgs ++ distPkgs
+  writeFile (dir </> "ghc-version") ghcVersion
 cmdUpdate _ _ = usage
 
 -- These packages are part of the ghc distribution, so they are

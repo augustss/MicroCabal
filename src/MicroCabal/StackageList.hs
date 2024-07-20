@@ -5,6 +5,8 @@ module MicroCabal.StackageList(
   showPackage,
   readPackage,
   yamlToStackageList,
+  yamlToGHCVersion,
+  readVersionM,
   ) where
 import Data.Maybe
 import Data.Version
@@ -44,6 +46,24 @@ yamlToStackageList (YRecord flds) =
         _ -> error "Unrecognized Stackage package list format"
 yamlToStackageList _ = error "Unrecognized Stackage package list format"
 
+-- XXX Ugly, ugly hack because the YAML parser is brtoken.
+yamlToGHCVersion :: YAMLValue -> String
+yamlToGHCVersion (YRecord flds) =
+  let bad n = error "yamlToGHCVersion: Unrecognized Stackage package list format " ++ show (n::Int)
+  in  case lookup "packages" flds of
+        Just (YArray packages) ->
+          case last packages of
+            YRecord pflds ->
+              case lookup "resolver" pflds of
+                Just (YRecord rflds) ->
+                  case lookup "compiler" rflds of
+                    Just (YString s) -> s
+                    _ -> bad 1
+                _ -> bad 2
+            _ -> bad 3
+        _ -> bad 4
+yamlToGHCVersion _ = error "Unrecognized Stackage package list format"
+
 addFlags :: [(YAMLFieldName, YAMLValue)] -> StackagePackage -> StackagePackage
 addFlags flags st = maybe st (\ f -> st{ stFlags = yflags f }) $ lookup (stName st) flags
   where yflags (YRecord r) = [(n, b) | (n, YBool b) <- r]
@@ -64,7 +84,7 @@ decodePackage (YRecord (("hackage", YString fs):_)) = StackagePackage { stName =
 decodePackage y = error $ "Bad package desc " ++ show y
 
 readVersion :: String -> Version
-readVersion s = fromMaybe (error $ "decodePackage: bad version " ++ s) $ readVersionM s
+readVersion s = fromMaybe (error $ "readVersion: bad version " ++ s) $ readVersionM s
 
 readVersionM :: String -> Maybe Version
 readVersionM s = makeVersion <$> (mapM readMaybe . words . map (\ c -> if c == '.' then ' ' else c) $ s)

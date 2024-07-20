@@ -1,5 +1,6 @@
 module MicroCabal.Backend.GHC(ghcBackend) where
 import Control.Monad
+import Data.List
 import Data.Version
 import System.Directory
 import MicroCabal.Cabal
@@ -19,8 +20,14 @@ ghcBackend = Backend {
 
 ghcNameVers :: Env -> IO (String, Version)
 ghcNameVers env = do
-  v <- readVersion . takeWhile (/= '\n') <$> cmdOut env "ghc --numeric-version"
-  return ("ghc", v)
+  svers <- takeWhile (/= '\n') <$> cmdOut env "ghc --numeric-version"
+  -- Check that the ghc version is the one that the Stackage snapshot wants.
+  -- XXX This should be somewhere else.
+  snapVersion <- readFile (cabalDir env </> "ghc-version")
+  let ghcVersion = "ghc-" ++ svers
+  when (snapVersion /= ghcVersion) $
+    error $ "The Stackage snapshot files are for " ++ snapVersion ++ ", but the current compiler is " ++ ghcVersion
+  return ("ghc", readVersion svers)
 
 getGhcName :: Env -> IO FilePath
 getGhcName env = do
@@ -101,16 +108,20 @@ findMainIs env (d:ds) fn = do
 getExposedModules :: [Field] -> [String]
 getExposedModules flds = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
 
+getOtherModules :: [Field] -> [String]
+getOtherModules flds = getFieldStrings flds [] "other-modules"
+
 ghcBuildLib :: Env -> Section -> Section -> IO ()
 ghcBuildLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
   stdArgs <- setupStdArgs env flds
   let mdls = getExposedModules flds
+      omdls = getOtherModules flds
       ver  = getVersion glob "version"
       args = unwords $ ["-O"] ++ stdArgs ++
                        ["--make", "-no-link", "-this-unit-id", key ] ++
                        ["-fbuilding-cabal-package", "-static" ] ++
-                       mdls
+                       (omdls ++ mdls)
       key = name ++ "-" ++ showVersion ver ++ "-mcabal"
   when (verbose env >= 0) $
     putStrLn $ "Build library " ++ name ++ " with ghc"
@@ -125,8 +136,12 @@ ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
 
 getPackageId :: Env -> PackageName -> IO PackageName
 getPackageId env n = do
-  r <- cmdOut env $ "ghc-pkg field " ++ n ++ " id"  -- returns "id: pkg-id"
-  return $ last $ words r
+  mr <- tryCmdOut env $ "ghc-pkg field " ++ n ++ " id 2>dev/null"  -- returns "id: pkg-id"
+  case mr of
+    Just r -> return $ last $ words r
+    Nothing -> do
+      dir <- getGhcDir env
+      last . words <$> cmdOut env ("ghc-pkg field  --package-db=" ++ dir ++ " " ++ n ++ " id")  -- returns "id: pkg-id"
 
 ghcInstallLib :: Env -> Section -> Section -> IO ()
 ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
@@ -141,15 +156,16 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
   rmrf env archOut
   cmd env $ "ar -c -r -s " ++ archOut ++ " `find " ++ buildDir ++ " -name '*.o'`"
 
-  let files = map mdlToHi mdls
+  let files = map mdlToHi (omdls ++ mdls)
       mdls = getExposedModules flds
+      omdls = getOtherModules flds
       mdlToHi = (++ ".hi") . map (\ c -> if c == '.' then '/' else c)
   copyFiles env buildDir files destDir
 
   db <- getGhcDir env
   let extraLibs = getFieldStrings flds [] "extra-libraries"
       deps = getBuildDependsPkg flds
-  depends <- mapM (getPackageId env) deps
+  depends <- nub <$> mapM (getPackageId env) deps
   let desc = unlines
         [ "name: " ++ name
         , "version: " ++ showVersion vers

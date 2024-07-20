@@ -1,5 +1,5 @@
 module MicroCabal.Unix(
-  cmd, tryCmd, cmdOut,
+  cmd, tryCmd, cmdOut, tryCmdOut,
   mkdir,
   wget, URL(..),
   tarx,
@@ -38,6 +38,18 @@ cmdOut env s = do
   o <- readFile fn
   removeFile fn
   return o
+
+tryCmdOut :: Env -> String -> IO (Maybe String)
+tryCmdOut env s = do
+  (fn, h) <- tmpFile
+  hClose h
+  b <- tryCmd env $ s ++ " >" ++ fn
+  if b then do
+    o <- readFile fn
+    removeFile fn
+    return (Just o)
+   else
+    return Nothing
 
 tmpFile :: IO (String, Handle)
 tmpFile = do

@@ -168,7 +168,7 @@ pVersionRange = pVOr
     pVGEHat = (VGEHat <$> pVersion) <|< (VGEHatSet <$> pVSet)
 
 pVOper :: P (Version -> VersionRange)
-pVOper = pSpaces *> choice [ VGT <$ pStr ">", VGT <$ pStr "<", VGT <$ pStr "<=", VGT <$ pStr ">="]
+pVOper = pSpaces *> choice [ VGT <$ pStr ">", VLT <$ pStr "<", VGE <$ pStr ">=", VLE <$ pStr "<="]
 
 pStr :: String -> P ()
 pStr s = pSpaces *> p s
