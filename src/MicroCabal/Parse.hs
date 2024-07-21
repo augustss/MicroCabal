@@ -161,6 +161,8 @@ pVersionRange = pVOr
         <|< pParens pVersionRange
         <|< (pStr "=="  *> pVEq)
         <|< (pStr "^>=" *> pVGEHat)
+        <|< (VGE (makeVersion [0]) <$ pStr "-any")
+        <|< (VLT (makeVersion [0]) <$ pStr "-none")
     pVEq  = (VEQSet <$> pVSet) <|< do
       v <- pVersion
       (VEQWild v <$ pStr ".*") <|< pure (VEQ v)
@@ -386,7 +388,7 @@ parsers =
   , "data-dir"                       # pVSpace
   , "data-files"                     # pVOptComma
   , "description"                    # pFreeText
-  , "extra-doc-files"                # pVComma
+  , "extra-doc-files"                # pVOptComma
   , "extra-source-files"             # pVOptComma
   , "extra-tmp-files"                # pVComma
   , "homepage"                       # pFreeText

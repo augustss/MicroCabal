@@ -74,6 +74,7 @@ setupStdArgs env flds = do
   buildDir <- getBuildDir env
   return $ [ "-package-env=-", "-package-db=" ++ db, "-outputdir=" ++ buildDir, "-w"] ++
            map ("-i" ++) srcDirs ++
+           ["-i" ++ pathModuleDir] ++
            map ("-X" ++) exts ++
            map ("-package " ++) deps ++
            opts ++ cppOpts
@@ -136,7 +137,7 @@ ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
 
 getPackageId :: Env -> PackageName -> IO PackageName
 getPackageId env n = do
-  mr <- tryCmdOut env $ "ghc-pkg field " ++ n ++ " id 2>dev/null"  -- returns "id: pkg-id"
+  mr <- tryCmdOut env $ "ghc-pkg field " ++ n ++ " id 2>/dev/null"  -- returns "id: pkg-id"
   case mr of
     Just r -> return $ last $ words r
     Nothing -> do

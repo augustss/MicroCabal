@@ -224,6 +224,17 @@ getGlobal :: Cabal -> Section
 getGlobal (Cabal sects) =
   fromMaybe (error "no global section") $ listToMaybe [ s | s@(Section "global" _ _) <- sects ]
 
+createPathFile :: Env -> Section -> IO ()
+createPathFile env (Section _ name _) = do
+  let mdlName = "Paths_" ++ map (\ c -> if c == '-' then '_' else c) name
+      pathName = pathModuleDir </> mdlName ++ ".hs"
+  when (verbose env >= 1) $
+    putStrLn $ "Creating path module " ++ pathName
+  mkdir env pathModuleDir
+  writeFile pathName $
+    "module " ++ mdlName ++ " where\n" ++
+    "-- nothing yet\n"
+
 build :: Env -> IO ()
 build env = do
   fn <- findCabalFile env
@@ -241,6 +252,7 @@ build env = do
 buildExe :: Env -> Section -> Section -> IO ()
 buildExe env glob sect@(Section _ name flds) = do
   putStrLn $ "Building executable " ++ name
+  createPathFile env sect
   let deps = getBuildDepends flds
       pkgs = [ p | (p, _, _) <- deps ]
   mapM_ (checkDep env) pkgs
@@ -249,6 +261,7 @@ buildExe env glob sect@(Section _ name flds) = do
 buildLib :: Env -> Section -> Section -> IO ()
 buildLib env glob sect@(Section _ name flds) = do
   putStrLn $ "Building library " ++ name
+  createPathFile env sect
   let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
   buildPkgLib (backend env) env glob sect
@@ -285,12 +298,19 @@ install env = do
 installExe :: Env -> Section -> Section -> IO ()
 installExe env glob sect@(Section _ name _) = do
   putStrLn $ "Installing executable " ++ name
+  installDataFiles env glob sect
   installPkgExe (backend env) env glob sect
 
 installLib :: Env -> Section -> Section -> IO ()
 installLib env glob sect@(Section _ name _) = do
   putStrLn $ "Installing library " ++ name
+  installDataFiles env glob sect
   installPkgLib (backend env) env glob sect
+
+installDataFiles :: Env -> Section -> Section -> IO ()
+installDataFiles _env _glob _sect@(Section _ _ _flds) = do
+  -- Not yet
+  return ()
 
 -----------------------------------------
 
