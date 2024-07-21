@@ -12,12 +12,14 @@ module MicroCabal.Cabal(
   FlagInfo(..),
   showCabal, showSection,
   getFieldString,
+  getFieldStringM,
   getFieldStrings,
   getBuildDepends,
   getBuildDependsPkg,
   getVersion,
   pathModuleDir,
   ) where
+import Data.Maybe
 import Data.Version
 
 --type ExecName = String
@@ -102,9 +104,14 @@ showSection (Section s n fs) = unlines $ ("  " ++ s ++ " " ++ n) : map (indent .
 
 getFieldString :: [Field] -> FieldName -> String
 getFieldString flds n =
+  fromMaybe (error $ "field not found: " ++ show n ++ "\n" ++ unlines (map showField flds)) $
+  getFieldStringM flds n
+
+getFieldStringM :: [Field] -> FieldName -> Maybe String
+getFieldStringM flds n =
   case [ s | Field f (VItem s) <- flds, f == n ] of
-    [s] -> s
-    _   -> error $ "field not found: " ++ show n ++ "\n" ++ unlines (map showField flds)
+    [] -> Nothing
+    ss -> Just (last ss)
 
 getFieldStrings :: [Field] -> [String] -> FieldName -> [String]
 getFieldStrings flds def n =

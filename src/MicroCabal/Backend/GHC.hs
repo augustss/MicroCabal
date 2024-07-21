@@ -70,12 +70,17 @@ setupStdArgs env flds = do
       exts    = getFieldStrings flds defExts "extensions"
       opts    = getFieldStrings flds []      "ghc-options"
       cppOpts = getFieldStrings flds []      "cpp-options"
+      incDirs = getFieldStrings flds []      "include-dirs"
+      mlang   = getFieldStringM flds         "default-language"
       deps    = getBuildDependsPkg flds
+      lang    = maybe [] (\ s -> ["-X" ++ s]) mlang
   buildDir <- getBuildDir env
   return $ [ "-package-env=-", "-package-db=" ++ db, "-outputdir=" ++ buildDir, "-w"] ++
            map ("-i" ++) srcDirs ++
            ["-i" ++ pathModuleDir] ++
+           map ("-I" ++) incDirs ++
            map ("-X" ++) exts ++
+           lang ++
            map ("-package " ++) deps ++
            opts ++ cppOpts
 
