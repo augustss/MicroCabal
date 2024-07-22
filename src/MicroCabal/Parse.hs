@@ -214,7 +214,11 @@ pCommaList' :: P a -> P [a]
 pCommaList' p = esepBy p pComma <* eoptional (pStr ",")
 
 pSpaceList :: P a -> P [a]
-pSpaceList p = esepBy p pWhite
+pSpaceList p = esepBy p' pWhite
+  where
+    -- sometimes (kan-extensions.cabal) there is a spurious comma,
+    -- so allow that
+    p' = p <* eoptional (pStr ",")
 
 pOptCommaList :: P a -> P [a]
 pOptCommaList p =
