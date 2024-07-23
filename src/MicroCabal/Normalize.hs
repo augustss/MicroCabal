@@ -29,7 +29,7 @@ combineValue _ (VItem x) (VItem y) | x == y = VItem x
 combineValue _ (VItems xs) (VItems ys) = VItems (xs ++ ys)
 combineValue _ (VBool x) (VBool y) = VBool (x && y)
 combineValue _ (VPkgs xs) (VPkgs ys) = VPkgs (xs ++ ys)
-combineValue _ (VItem x) (VItem y) = VItem (x ++ "\n" ++ y)  -- XXX this hack should go away
+combineValue _ (VXItem x) (VXItem y) = VXItem (x ++ "\n" ++ y)
 combineValue n v1 v2 = error $ "fields " ++ show n ++ " cannot be combined, values=" ++ show (v1, v2)
 
 inline :: Cabal -> Cabal

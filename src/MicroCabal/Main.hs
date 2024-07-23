@@ -7,7 +7,7 @@ import System.Environment
 import System.Exit
 import System.Directory
 import qualified System.Info as I
-import Text.Read
+--import Text.Read
 import MicroCabal.Backend.GHC
 import MicroCabal.Backend.MHS
 import MicroCabal.Cabal
@@ -16,7 +16,7 @@ import MicroCabal.Normalize
 import MicroCabal.Parse
 import MicroCabal.StackageList
 import MicroCabal.Unix
-import MicroCabal.YAML
+--import MicroCabal.YAML
 
 version :: String
 version = "MicroCabal 0.1.0.0"

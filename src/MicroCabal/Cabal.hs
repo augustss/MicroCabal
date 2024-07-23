@@ -36,6 +36,7 @@ data Value
   | VVersion Version
   | VRange   VersionRange
   | VPkgs    [(Item, [Item], Maybe VersionRange)]
+  | VXItem   String              -- for x-* fields
   deriving (Show)
 
 data Field

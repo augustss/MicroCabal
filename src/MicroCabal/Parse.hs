@@ -295,12 +295,18 @@ pCond = pCor
         <|< (pKeyWordNC "os"   *> pParens (Cos   <$> pName))
         <|< pParens pCond
 
-pFreeText :: P Value
-pFreeText = do
+pFreeText' :: P String
+pFreeText' = do
   txt <- satisfyMany (\ c -> c /= end && c /= fieldSep)
   let dot "." = ""  -- Single '.' used to make an empty line
       dot s   = s
-  pure $ VItem $ unlines . map (dot . dropWhile (== ' ')) . lines $ txt
+  pure $ unlines . map (dot . dropWhile (== ' ')) . lines $ txt
+
+pFreeText :: P Value
+pFreeText = VItem <$> pFreeText'
+
+pFreeTextX :: P Value
+pFreeTextX = VXItem <$> pFreeText'
 
 pFieldName :: P FieldName
 pFieldName = pIdent
@@ -328,7 +334,7 @@ pSection = pWhite *> (
 
 getParser :: FieldName -> P Value
 getParser f =
-  if "x-" `isPrefixOf` f then pFreeText else
+  if "x-" `isPrefixOf` f then pFreeTextX else
   fromMaybe (error $ "Unknown field: " ++ f) $ lookup f parsers
 
 parsers :: [(FieldName, P Value)]
