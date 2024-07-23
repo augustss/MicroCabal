@@ -2,15 +2,17 @@ module MicroCabal.Env(
   Env(..),
   Backend(..),
   PackageName,
+  message,
   ) where
 import MicroCabal.Cabal
 import MicroCabal.StackageList(PackageName)
 
 data Env = Env {
-  cabalDir :: FilePath,
-  distDir  :: FilePath,
-  verbose  :: Int,
-  backend  :: Backend
+  cabalDir :: FilePath,           -- where to install, default is $HOME/.mcabal
+  distDir  :: FilePath,           -- where to build, default is dist-mcabal
+  verbose  :: Int,                -- how chatty, default is 0, -1=say nothing, 0=minimal messages, 1=debug info
+  depth    :: Int,                -- nesting depth for recursive builds, default is 0
+  backend  :: Backend             -- which compiler to use, default is MHS
   }
 
 data Backend = Backend {
@@ -21,3 +23,7 @@ data Backend = Backend {
   installPkgExe  :: Env -> Section -> Section -> IO (),     -- install the package from the current directory
   installPkgLib  :: Env -> Section -> Section -> IO ()      -- install the package from the current directory
   }
+
+message :: Env -> Int -> String -> IO ()
+message env level msg | verbose env >= level = putStrLn msg
+                      | otherwise = return ()

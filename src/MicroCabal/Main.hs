@@ -41,7 +41,7 @@ setupEnv :: IO Env
 setupEnv = do
   home <- getEnv "HOME"
   let cdir = home </> ".mcabal"
-  return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, backend = mhsBackend }
+  return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, backend = mhsBackend }
 
 decodeCommonArgs :: Env -> IO (Env, [String])
 decodeCommonArgs env = do
@@ -108,14 +108,12 @@ getBestStackage env = do
       fixLeading0 (c:cs) = c : fixLeading0 cs
       fixLeading0 cs = cs
       snapURL = URL $ snapshotSource ++ snap' ++ ".yaml"
-  when (verbose env > 0) $
-    putStrLn $ "Picking Stackage snapshot " ++ snap
+  message env 1 $ "Picking Stackage snapshot " ++ snap
   return $ snapURL
 
 cmdUpdate :: Env -> [String] -> IO ()
 cmdUpdate env [] = do
-  when (verbose env >= 0) $
-    putStrLn "Retrieving Stackage package list"
+  message env 0 "Retrieving Stackage package list"
   let dir = cabalDir env
       stk = dir </> snapshotName
       fpkgs = dir </> packageListName
@@ -129,8 +127,7 @@ cmdUpdate env [] = do
 --  putStrLn $ "==== " ++ ghcVersion
 --  putStrLn $ showYAML yml
 --  putStrLn $ show pkgs
-  when (verbose env > 0) $
-    putStrLn $ "Write package list to " ++ fpkgs
+  message env 1 $ "Write package list to " ++ fpkgs
   writeFile fpkgs $ unlines $ map showPackage $ pkgs ++ distPkgs
   writeFile (dir </> "ghc-version") ghcVersion
 cmdUpdate _ _ = usage
@@ -156,8 +153,7 @@ getPackageList env = do
       fpkgs = dir </> packageListName
   b <- doesFileExist fpkgs
   when (not b) $ do
-    when (verbose env >= 0) $
-      putStrLn "No package list, running 'update' command"
+    message env 0 "No package list, running 'update' command"
     cmdUpdate env []
   map readPackage . lines <$> readFile fpkgs
 
@@ -182,15 +178,12 @@ cmdFetch env [pkg] = do
       file = pdir ++ ".tar.gz"
   b <- doesDirectoryExist pdir
   if b then
-    when (verbose env > 0) $
-      putStrLn $ "Already in " ++ pdir
+    message env 1 $ "Already in " ++ pdir
    else do
     mkdir env pdir
-    when (verbose env > 0) $
-      putStrLn $ "Fetching  " ++ pkgz
+    message env 1 $ "Fetching  " ++ pkgz
     wget env url file
-    when (verbose env > 0) $
-      putStrLn $ "Unpacking " ++ pkgz ++ " in " ++ pdir
+    message env 1 $ "Unpacking " ++ pkgz ++ " in " ++ pdir
     tarx env (dirPackage env) file
 cmdFetch _ _ = usage
 
@@ -211,11 +204,9 @@ cmdBuild env [pkg] = do
   let dir = dirForPackage env st
   b <- doesDirectoryExist dir
   when (not b) $ do
-    when (verbose env >= 0) $
-      putStrLn $ "Package not found, running 'fetch " ++ pkg ++ "'"
+    message env 0 $ "Package not found, running 'fetch " ++ pkg ++ "'"
     cmdFetch env [pkg]
-  when (verbose env >= 0) $
-    putStrLn $ "Building in " ++ dir
+  message env 0 $ "Building in " ++ dir
   setCurrentDirectory dir
   cmdBuild env []
 cmdBuild _ _ = usage
@@ -228,8 +219,7 @@ createPathFile :: Env -> Section -> IO ()
 createPathFile env (Section _ name _) = do
   let mdlName = "Paths_" ++ map (\ c -> if c == '-' then '_' else c) name
       pathName = pathModuleDir </> mdlName ++ ".hs"
-  when (verbose env >= 1) $
-    putStrLn $ "Creating path module " ++ pathName
+  message env 1 $ "Creating path module " ++ pathName
   mkdir env pathModuleDir
   writeFile pathName $
     "module " ++ mdlName ++ " where\n" ++
