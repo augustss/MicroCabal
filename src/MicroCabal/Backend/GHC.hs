@@ -47,8 +47,7 @@ initDB env = do
   dir <- getGhcDir env
   b <- doesDirectoryExist dir
   when (not b) $ do
-    when (verbose env > 0) $
-      putStrLn $ "Creating GHC package db " ++ dir
+    message env 0 $ "Creating GHC package db " ++ dir
     cmd env $ "ghc-pkg init " ++ dir
 
 ghcExists :: Env -> PackageName -> IO Bool
@@ -98,8 +97,7 @@ ghcBuildExe env _ (Section _ name flds) = do
   stdArgs <- setupStdArgs env flds
   let args    = unwords $ ["-O"] ++ stdArgs ++ ["-o", bin, "--make", mainIs'] ++
                 [ ">/dev/null" | verbose env <= 0 ]
-  when (verbose env >= 0) $
-    putStrLn $ "Build executable " ++ bin ++ " with ghc"
+  message env 0 $ "Building executable " ++ bin ++ " with ghc"
   cmd env $ "ghc " ++ args
 
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
@@ -131,8 +129,7 @@ ghcBuildLib env (Section _ _ glob) (Section _ name flds) = do
                        (omdls ++ mdls) ++
                        [ ">/dev/null" | verbose env <= 0 ]
       key = name ++ "-" ++ showVersion ver ++ "-mcabal"
-  when (verbose env >= 0) $
-    putStrLn $ "Build library " ++ name ++ " with ghc"
+  message env 0 $ "Building library " ++ name ++ " with ghc"
   cmd env $ "ghc " ++ args
 
 ghcInstallExe :: Env -> Section -> Section -> IO ()
@@ -191,5 +188,6 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
         ]
       key = namever ++ "-mcabal"
       pkgFn = db </> key ++ ".conf"
+      quiet = if verbose env > 0 then "" else " >/dev/null"
   writeFile pkgFn desc
-  cmd env $ "ghc-pkg update --package-db=" ++ db ++ " " ++ pkgFn
+  cmd env $ "ghc-pkg update --package-db=" ++ db ++ " " ++ pkgFn ++ quiet

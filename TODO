@@ -1,10 +1,6 @@
-* Remove the combineValue hack for VItem.
-  Probably needs a different item type for free-text?
-  Or make x-* fields be lists?
-
 * Install data files, include files, etc.
   Add include dirs from installed packages to uses of it.
 
-* Add flag to build recursively.
-
 * Test (with ghc) with lots of packages.
+
+* Cache compiler name&version

@@ -41,12 +41,13 @@ setupEnv :: IO Env
 setupEnv = do
   home <- getEnv "HOME"
   let cdir = home </> ".mcabal"
-  return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, backend = mhsBackend }
+  return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, backend = mhsBackend, recursive = False }
 
 decodeCommonArgs :: Env -> IO (Env, [String])
 decodeCommonArgs env = do
   let loop e ("-v"    : as) = loop e{ verbose = verbose e + 1 } as
       loop e ("-q"    : as) = loop e{ verbose = -1 } as
+      loop e ("-r"    : as) = loop e{ recursive = True } as
       loop e ("--ghc" : as) = loop e{ backend = ghcBackend } as
       loop e ("--mhs" : as) = loop e{ backend = mhsBackend } as
       loop e as = return (e, as)
@@ -200,6 +201,7 @@ findCabalFile _env = do
 cmdBuild :: Env -> [String] -> IO ()
 cmdBuild env [] = build env
 cmdBuild env [pkg] = do
+  message env 0 $ "Build package " ++ pkg
   st <- getPackageInfo env pkg
   let dir = dirForPackage env st
   b <- doesDirectoryExist dir
@@ -241,7 +243,7 @@ build env = do
 
 buildExe :: Env -> Section -> Section -> IO ()
 buildExe env glob sect@(Section _ name flds) = do
-  putStrLn $ "Building executable " ++ name
+  message env 0 $ "Building executable " ++ name
   createPathFile env sect
   let deps = getBuildDepends flds
       pkgs = [ p | (p, _, _) <- deps ]
@@ -250,7 +252,7 @@ buildExe env glob sect@(Section _ name flds) = do
 
 buildLib :: Env -> Section -> Section -> IO ()
 buildLib env glob sect@(Section _ name flds) = do
-  putStrLn $ "Building library " ++ name
+  message env 0 $ "Building library " ++ name
   createPathFile env sect
   let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
@@ -261,7 +263,12 @@ checkDep env pkg = do
   let bend = backend env
   b <- doesPkgExist bend env pkg
   when (not b) $
-    error $ "dependency not installed: " ++ pkg
+    if recursive env then do
+      let env' = env { depth = depth env + 1 }
+      preserveCurrentDirectory $
+        cmdInstall env' [pkg]
+    else
+      error $ "dependency not installed: " ++ pkg
 
 -----------------------------------------
 
@@ -287,13 +294,13 @@ install env = do
 
 installExe :: Env -> Section -> Section -> IO ()
 installExe env glob sect@(Section _ name _) = do
-  putStrLn $ "Installing executable " ++ name
+  message env 0 $ "Installing executable " ++ name
   installDataFiles env glob sect
   installPkgExe (backend env) env glob sect
 
 installLib :: Env -> Section -> Section -> IO ()
 installLib env glob sect@(Section _ name _) = do
-  putStrLn $ "Installing library " ++ name
+  message env 0 $ "Installing library " ++ name
   installDataFiles env glob sect
   installPkgLib (backend env) env glob sect
 
@@ -318,6 +325,7 @@ cmdHelp _ _ = putStrLn "\
   \Flags:\n\
   \  -v                            be more verbose (can be repeated)\n\
   \  -q                            be quiet\n\
+  \  -r                            do recursive installs for missing packages\n\
   \  --ghc                         compile using ghc\n\
   \  --mhs                         compile using mhs (default)\n\
   \\n\

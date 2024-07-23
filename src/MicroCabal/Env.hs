@@ -12,6 +12,7 @@ data Env = Env {
   distDir  :: FilePath,           -- where to build, default is dist-mcabal
   verbose  :: Int,                -- how chatty, default is 0, -1=say nothing, 0=minimal messages, 1=debug info
   depth    :: Int,                -- nesting depth for recursive builds, default is 0
+  recursive:: Bool,               -- do recursive builds, default is False
   backend  :: Backend             -- which compiler to use, default is MHS
   }
 
@@ -25,5 +26,5 @@ data Backend = Backend {
   }
 
 message :: Env -> Int -> String -> IO ()
-message env level msg | verbose env >= level = putStrLn msg
+message env level msg | verbose env >= level = putStrLn $ replicate (2 * depth env) ' ' ++ msg
                       | otherwise = return ()

@@ -6,6 +6,7 @@ module MicroCabal.Unix(
   rmrf,
   cp,
   copyFiles,
+  preserveCurrentDirectory,
   (</>),
   ) where
 import Control.Exception
@@ -87,6 +88,13 @@ cp env s d = do
 copyFiles :: Env -> FilePath -> [FilePath] -> FilePath -> IO ()
 copyFiles env src fns tgt = do
   cmd env $ "cd " ++ src ++ "; tar cf - " ++ unwords fns ++ " | (cd " ++ tgt ++ "; tar xf - )"
+
+preserveCurrentDirectory :: IO a -> IO a
+preserveCurrentDirectory io = do
+  cwd <- getCurrentDirectory
+  a <- io
+  setCurrentDirectory cwd
+  return a
 
 -----
 
