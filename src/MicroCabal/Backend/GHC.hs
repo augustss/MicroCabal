@@ -96,7 +96,8 @@ ghcBuildExe env _ (Section _ name flds) = do
   mkdir env $ distDir env </> binGhc
   mainIs' <- findMainIs env srcDirs mainIs
   stdArgs <- setupStdArgs env flds
-  let args    = unwords $ ["-O"] ++ stdArgs ++ ["-o", bin, "--make", mainIs']
+  let args    = unwords $ ["-O"] ++ stdArgs ++ ["-o", bin, "--make", mainIs'] ++
+                [ ">/dev/null" | verbose env <= 0 ]
   when (verbose env >= 0) $
     putStrLn $ "Build executable " ++ bin ++ " with ghc"
   cmd env $ "ghc " ++ args
@@ -127,7 +128,8 @@ ghcBuildLib env (Section _ _ glob) (Section _ name flds) = do
       args = unwords $ ["-O"] ++ stdArgs ++
                        ["--make", "-no-link", "-this-unit-id", key ] ++
                        ["-fbuilding-cabal-package", "-static" ] ++
-                       (omdls ++ mdls)
+                       (omdls ++ mdls) ++
+                       [ ">/dev/null" | verbose env <= 0 ]
       key = name ++ "-" ++ showVersion ver ++ "-mcabal"
   when (verbose env >= 0) $
     putStrLn $ "Build library " ++ name ++ " with ghc"
