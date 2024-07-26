@@ -26,7 +26,7 @@ parseSnapshots fn rfile = runP pSnapshotsTop fn rfile
 
 runP :: P a -> FilePath -> String -> a
 runP prsr fn file =
-  case runPrsr prsr (initLexState file) of
+  case runPrsr prsr (initLexState (preLex file)) of
     Left (LastFail n ts msgs) -> error $ "\n" ++
       "  found:    " ++ (map show ts ++ ["EOF"]) !! 0 ++ "\n" ++
       "  expected: " ++ unwords (nub msgs) ++ "\n" ++
@@ -37,6 +37,17 @@ runP prsr fn file =
     Right (a:_) -> a
     Right []    -> undefined -- impossible
 
+-- Fixup of '\r' and '\t'
+preLex :: [Char] -> [Char]
+preLex = loop 0
+  where
+    loop :: Int -> [Char] -> [Char]
+    loop _ [] = []
+    loop _ ('\n':cs) = '\n' : loop 0     cs
+    loop _ ('\r':cs) =        loop 0     cs
+    loop n ('\t':cs) = replicate k ' ' ++ loop 0 cs
+         where k = 8 - n `rem` 8
+    loop n (c:cs)    = c    : loop (n+1) cs
 
 ------------------------------
 
@@ -207,7 +218,7 @@ pComma :: P ()
 pComma = pWhite *> pChar ','
 
 pCommaList :: P a -> P [a]
-pCommaList p = (pStr "," *> esepBy1 p pComma)
+pCommaList p = (pStrW "," *> esepBy1 p pComma)
   <|< pCommaList' p
 
 pCommaList' :: P a -> P [a]
