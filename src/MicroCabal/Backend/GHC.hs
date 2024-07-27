@@ -110,8 +110,10 @@ findMainIs env (d:ds) fn = do
    else
     findMainIs env ds fn
 
+-- It can happen that there are no exposed modules.
+-- E.g., for a package only needed for certain versions.
 getExposedModules :: [Field] -> [String]
-getExposedModules flds = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
+getExposedModules flds = getFieldStrings flds [] "exposed-modules"
 
 getOtherModules :: [Field] -> [String]
 getOtherModules flds = getFieldStrings flds [] "other-modules"
@@ -120,17 +122,21 @@ ghcBuildLib :: Env -> Section -> Section -> IO ()
 ghcBuildLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
   stdArgs <- setupStdArgs env flds
-  let mdls = getExposedModules flds
+  let emdls = getExposedModules flds
       omdls = getOtherModules flds
+      mdls = emdls ++ omdls
       ver  = getVersion glob "version"
       args = unwords $ ["-O"] ++ stdArgs ++
                        ["--make", "-no-link", "-this-unit-id", key ] ++
                        ["-fbuilding-cabal-package", "-static" ] ++
-                       (omdls ++ mdls) ++
+                       mdls ++
                        [ ">/dev/null" | verbose env <= 0 ]
       key = name ++ "-" ++ showVersion ver ++ "-mcabal"
-  message env 0 $ "Building library " ++ name ++ " with ghc"
-  cmd env $ "ghc " ++ args
+  if null mdls then
+    message env 0 $ "Building library " ++ name ++ " with ghc skipped, no modules"
+   else do
+    message env 0 $ "Building library " ++ name ++ " with ghc"
+    cmd env $ "ghc " ++ args
 
 ghcInstallExe :: Env -> Section -> Section -> IO ()
 ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
@@ -159,19 +165,21 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
       archOut = destDir </> "libHS" ++ namever ++ "-mcabal.a"
   mkdir env destDir
   rmrf env archOut
-  cmd env $ "ar -c -r -s " ++ archOut ++ " `find " ++ buildDir ++ " -name '*.o'`"
 
   let files = map mdlToHi (omdls ++ mdls)
       mdls = getExposedModules flds
       omdls = getOtherModules flds
       mdlToHi = (++ ".hi") . map (\ c -> if c == '.' then '/' else c)
-  copyFiles env buildDir files destDir
+
+  when (not (null files)) $ do
+    cmd env $ "ar -c -r -s " ++ archOut ++ " `find " ++ buildDir ++ " -name '*.o'`"
+    copyFiles env buildDir files destDir
 
   db <- getGhcDir env
   let extraLibs = getFieldStrings flds [] "extra-libraries"
       deps = getBuildDependsPkg flds
   depends <- nub <$> mapM (getPackageId env) deps
-  let desc = unlines
+  let desc = unlines $
         [ "name: " ++ name
         , "version: " ++ showVersion vers
         , "visibility: public"
@@ -182,10 +190,10 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
         , "import-dirs: " ++ destDir
         , "library-dirs: " ++ destDir
         , "library-dirs-static: " ++ destDir
-        , "hs-libraries: HS" ++ key
         , "extra-libraries: " ++ unwords extraLibs
         , "depends: " ++ unwords depends
-        ]
+        ] ++
+        [ "hs-libraries: HS" ++ key | not (null files) ]
       key = namever ++ "-mcabal"
       pkgFn = db </> key ++ ".conf"
       quiet = if verbose env > 0 then "" else " >/dev/null"

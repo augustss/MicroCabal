@@ -1,5 +1,6 @@
 module MicroCabal.Env(
   Env(..),
+  Target(..),
   Backend(..),
   PackageName,
   message,
@@ -13,8 +14,12 @@ data Env = Env {
   verbose  :: Int,                -- how chatty, default is 0, -1=say nothing, 0=minimal messages, 1=debug info
   depth    :: Int,                -- nesting depth for recursive builds, default is 0
   recursive:: Bool,               -- do recursive builds, default is False
-  backend  :: Backend             -- which compiler to use, default is MHS
+  backend  :: Backend,            -- which compiler to use, default is MHS
+  targets  :: [Target]            -- only build/install these
   }
+
+data Target = TgtLib | TgtExe
+  deriving (Eq)
 
 data Backend = Backend {
   backendNameVers:: Env ->                       IO (String, Version), -- name and version

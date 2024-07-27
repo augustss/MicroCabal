@@ -45,7 +45,7 @@ libName (Cabal []) = undefined
 libName (Cabal (g@(Section _ _ gs):ss)) = Cabal $ g : map set ss
   where set (Section "library" "" fs) = Section "library" name fs
         set s = s
-        name = head $ [ n | Field "name" (VItem n) <- gs ] ++ [error "no name field"]  
+        name = getFieldString gs "name"
 
 reduce :: FlagInfo -> Cabal -> Cabal
 reduce info c = reduce' (addFlags c) c

@@ -421,7 +421,7 @@ parsers =
   , "package-url"                    # pFreeText
   , "stability"                      # pFreeText
   , "subdir"                         # pFreeText
-  , "synopsis"                       # pFreeText
+  , "synopsis"                       # pFreeTextX
   , "tested-with"                    # pFreeText
   , "version"                        # (VVersion <$> pVersion)
   -- test suite fields              

@@ -41,7 +41,8 @@ setupEnv :: IO Env
 setupEnv = do
   home <- getEnv "HOME"
   let cdir = home </> ".mcabal"
-  return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, backend = mhsBackend, recursive = False }
+  return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0,
+              backend = mhsBackend, recursive = False, targets = [TgtLib, TgtExe] }
 
 decodeCommonArgs :: Env -> IO (Env, [String])
 decodeCommonArgs env = do
@@ -236,10 +237,10 @@ build env = do
       info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
       glob = getGlobal ncbl
-      sect s@(Section "executable" _ _) = buildExe env glob s
-      sect s@(Section "library"    _ _) = buildLib env glob s
+      sect s@(Section "executable" _ _) | TgtExe `elem` targets env = buildExe env glob s
+      sect s@(Section "library"    _ _) | TgtLib `elem` targets env = buildLib env glob s
       sect _ = return ()
-  mapM_ sect sects
+  mapM_ sect $ addMissing sects
 
 buildExe :: Env -> Section -> Section -> IO ()
 buildExe env glob sect@(Section _ name flds) = do
@@ -266,9 +267,15 @@ checkDep env pkg = do
     if recursive env then do
       let env' = env { depth = depth env + 1 }
       preserveCurrentDirectory $
-        cmdInstall env' [pkg]
+        cmdInstallLib env' [pkg]
     else
       error $ "dependency not installed: " ++ pkg
+
+-- If there is no section, except the global one, then just make a
+-- library section.
+addMissing :: [Section] -> [Section]
+addMissing [glb@(Section "global" _ flds)] = [glb, Section "library" (getFieldString flds "name") flds]
+addMissing sects = sects
 
 -----------------------------------------
 
@@ -277,6 +284,9 @@ cmdInstall env args = do
   -- The will build and change current directory
   cmdBuild env args
   install env
+
+cmdInstallLib :: Env -> [String] -> IO ()
+cmdInstallLib env args = cmdInstall env{ targets = [TgtLib] } args
 
 install :: Env -> IO ()
 install env = do
@@ -287,10 +297,10 @@ install env = do
       info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
       glob = getGlobal ncbl
-      sect s@(Section "executable" _ _) = installExe env glob s
-      sect s@(Section "library"    _ _) = installLib env glob s
+      sect s@(Section "executable" _ _) | TgtExe `elem` targets env = installExe env glob s
+      sect s@(Section "library"    _ _) | TgtLib `elem` targets env = installLib env glob s
       sect _ = return ()
-  mapM_ sect sects
+  mapM_ sect $ addMissing sects
 
 installExe :: Env -> Section -> Section -> IO ()
 installExe env glob sect@(Section _ name _) = do
