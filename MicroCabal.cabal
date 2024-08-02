@@ -26,13 +26,15 @@ executable mcabal
   hs-source-dirs:      src
   ghc-options:         -Wall -Wno-unrecognised-warning-flags -Wno-x-partial -main-is MicroCabal.Main
   main-is:             MicroCabal/Main.hs
-  default-extensions:  MultiParamTypeClasses
+  default-extensions:  MultiParamTypeClasses ScopedTypeVariables PatternGuards
   other-modules:       MicroCabal.Backend.GHC
                        MicroCabal.Backend.MHS
                        MicroCabal.Cabal
                        MicroCabal.Env
+                       MicroCabal.Glob
                        MicroCabal.Normalize
                        MicroCabal.Parse
+                       MicroCabal.Regex
                        MicroCabal.StackageList
                        MicroCabal.Unix
                        MicroCabal.YAML

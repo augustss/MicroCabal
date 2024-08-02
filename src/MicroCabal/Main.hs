@@ -12,6 +12,7 @@ import MicroCabal.Backend.GHC
 import MicroCabal.Backend.MHS
 import MicroCabal.Cabal
 import MicroCabal.Env
+import MicroCabal.Glob
 import MicroCabal.Normalize
 import MicroCabal.Parse
 import MicroCabal.StackageList
@@ -315,9 +316,14 @@ installLib env glob sect@(Section _ name _) = do
   installPkgLib (backend env) env glob sect
 
 installDataFiles :: Env -> Section -> Section -> IO ()
-installDataFiles _env _glob _sect@(Section _ _ _flds) = do
-  -- Not yet
-  return ()
+installDataFiles env _glob _sect@(Section _ _ flds) = do
+  case getFieldStrings flds [] "data-files" of
+    [] -> return ()
+    pats -> do
+      files <- matchFiles "." pats
+      message env 1 $ "Installing data files " ++ unwords files
+      let tgt = undefined
+      copyFiles env "." files tgt
 
 -----------------------------------------
 
