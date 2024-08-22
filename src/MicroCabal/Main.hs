@@ -141,8 +141,9 @@ cmdUpdate _ _ = usage
 -- XXX more...
 distPkgs :: [StackagePackage]
 distPkgs =
-  [ StackagePackage "containers" (makeVersion [0,6,8]) False []
-  , StackagePackage "mtl"        (makeVersion [2,3,1]) False []
+  [ StackagePackage "containers" (makeVersion [0,6,8])   False []
+  , StackagePackage "mtl"        (makeVersion [2,3,1])   False []
+  , StackagePackage "time"       (makeVersion [1,12,2])  False []
   ]
 
 -----------------------------------------
