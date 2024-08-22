@@ -411,7 +411,7 @@ parsers =
   , "description"                    # pFreeText
   , "extra-doc-files"                # pVOptComma
   , "extra-source-files"             # pVOptComma
-  , "extra-tmp-files"                # pVComma
+  , "extra-tmp-files"                # pVOptComma
   , "homepage"                       # pFreeText
   , "license"                        # pFreeText
   , "license-file"                   # pVOptComma
