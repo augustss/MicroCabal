@@ -17,7 +17,6 @@ module MicroCabal.Cabal(
   getBuildDepends,
   getBuildDependsPkg,
   getVersion,
-  pathModuleDir,
   ) where
 import Data.Maybe
 import Data.Version
@@ -134,6 +133,3 @@ getVersion flds n =
   case [ s | Field f (VVersion s) <- flds, f == n ] of
     [s] -> s
     _   -> error $ "field not found: " ++ show n ++ "\n" ++ unlines (map showField flds)
-
-pathModuleDir :: FilePath
-pathModuleDir = "mdist"

@@ -10,15 +10,21 @@ import MicroCabal.Env
 import MicroCabal.Parse(readVersion)
 import MicroCabal.Unix
 
-mhsBackend :: Backend
-mhsBackend = Backend {
-  backendNameVers = mhsNameVers,
-  doesPkgExist = mhsExists,
-  buildPkgExe = mhsBuildExe,
-  buildPkgLib = mhsBuildLib,
-  installPkgExe = mhsInstallExe,
-  installPkgLib = mhsInstallLib
-  }
+mhsBackend :: Env -> IO Backend
+mhsBackend env = do
+  numVersion <- takeWhile (/= '\n') <$> cmdOut env "mhs --numeric-version"
+  let mhsVersion = "mhs-" ++ numVersion
+      version = readVersion numVersion  
+  return Backend {
+    compilerName = "mhs",
+    compilerVersion = version,
+    compiler = mhsVersion,
+    doesPkgExist = mhsExists,
+    buildPkgExe = mhsBuildExe,
+    buildPkgLib = mhsBuildLib,
+    installPkgExe = mhsInstallExe,
+    installPkgLib = mhsInstallLib
+    }
 
 mhsNameVers :: Env -> IO (String, Version)
 mhsNameVers env = do
@@ -48,7 +54,7 @@ mhsExists env pkgname = do
 
 -- XXX These packages are part of mhs.
 builtinPackages :: [String]
-builtinPackages = ["array", "base", "deepseq", "directory", "process", "bytestring", "text", "fail", "time"]
+builtinPackages = ["array", "base", "deepseq", "directory", "process", "bytestring", "text", "fail"]
 
 setupStdArgs :: Env -> [Field] -> [String]
 setupStdArgs _env flds =
@@ -89,7 +95,6 @@ mhsBuildExe env _ (Section _ name flds) = do
 mhs :: Env -> String -> IO ()
 mhs env args = do
   let flg = if verbose env == 1 then "-l " else if verbose env > 1 then "-v " else ""
-  -- mhsDir <- fmap (fromMaybe "/usr/local/lib/mhs") (lookupEnv "MHSDIR")
   cmd env $ "mhs " ++ flg ++ args
 
 mhsOut :: Env -> String -> IO String

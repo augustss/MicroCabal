@@ -8,31 +8,31 @@ import MicroCabal.Env
 import MicroCabal.Parse(readVersion)
 import MicroCabal.Unix
 
-ghcBackend :: Backend
-ghcBackend = Backend {
-  backendNameVers = ghcNameVers,
-  doesPkgExist = ghcExists,
-  buildPkgExe = ghcBuildExe,
-  buildPkgLib = ghcBuildLib,
-  installPkgExe = ghcInstallExe,
-  installPkgLib = ghcInstallLib
-  }
-
-ghcNameVers :: Env -> IO (String, Version)
-ghcNameVers env = do
-  svers <- takeWhile (/= '\n') <$> cmdOut env "ghc --numeric-version"
-  -- Check that the ghc version is the one that the Stackage snapshot wants.
-  -- XXX This should be somewhere else.
+ghcBackend :: Env -> IO Backend
+ghcBackend env = do
+  -- Actual GHC version.
+  numVersion <- takeWhile (/= '\n') <$> cmdOut env "ghc --numeric-version"
+  -- GHC version used in the stackage snapshot.
   snapVersion <- readFile (cabalDir env </> "ghc-version")
-  let ghcVersion = "ghc-" ++ svers
+  let ghcVersion = "ghc-" ++ numVersion
+      version = readVersion numVersion
+  -- Check that the ghc version is the one that the Stackage snapshot wants.
   when (snapVersion /= ghcVersion) $
     error $ "The Stackage snapshot files are for " ++ snapVersion ++ ", but the current compiler is " ++ ghcVersion
-  return ("ghc", readVersion svers)
+
+  return Backend {
+    compilerName = "ghc",
+    compilerVersion = version,
+    compiler = ghcVersion,
+    doesPkgExist = ghcExists,
+    buildPkgExe = ghcBuildExe,
+    buildPkgLib = ghcBuildLib,
+    installPkgExe = ghcInstallExe,
+    installPkgLib = ghcInstallLib
+    }
 
 getGhcName :: Env -> IO FilePath
-getGhcName env = do
-  (n, v) <- ghcNameVers env
-  return $ n ++ "-" ++ showVersion v
+getGhcName env = return $ compiler $ backend env
 
 getGhcDir :: Env -> IO FilePath
 getGhcDir env = (cabalDir env </>) <$> getGhcName env
@@ -76,7 +76,7 @@ setupStdArgs env flds = do
   buildDir <- getBuildDir env
   return $ [ "-package-env=-", "-package-db=" ++ db, "-outputdir=" ++ buildDir, "-w"] ++
            map ("-i" ++) srcDirs ++
-           ["-i" ++ pathModuleDir] ++
+           ["-i" ++ pathModuleDir env] ++
            map ("-I" ++) incDirs ++
            map ("-X" ++) exts ++
            lang ++
