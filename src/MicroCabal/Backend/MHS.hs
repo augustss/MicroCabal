@@ -89,13 +89,12 @@ mhsBuildExe env _ (Section _ name flds) = do
 mhs :: Env -> String -> IO ()
 mhs env args = do
   let flg = if verbose env == 1 then "-l " else if verbose env > 1 then "-v " else ""
-  mhsDir <- fmap (fromMaybe "/usr/local/lib/mhs") (lookupEnv "MHSDIR")
-  cmd env $ "MHSDIR=" ++ mhsDir ++ " mhs " ++ flg ++ args
+  -- mhsDir <- fmap (fromMaybe "/usr/local/lib/mhs") (lookupEnv "MHSDIR")
+  cmd env $ "mhs " ++ flg ++ args
 
 mhsOut :: Env -> String -> IO String
 mhsOut env args =
-  cmdOut env $ "MHSDIR=/usr/local/lib/mhs " ++    -- temporary hack
-            "mhs " ++ args
+  cmdOut env $ "mhs " ++ args
 
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
 findMainIs _ [] fn = error $ "cannot find " ++ show fn
