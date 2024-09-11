@@ -118,8 +118,10 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
                        setupStdArgs env flds ++
                        ["-a."] ++
                        mdls
+      isMdl (' ':_) = True   -- Relies on -L output format
+      isMdl _ = False
   mhs env args
-  pkgmdls <- lines <$> mhsOut env ("-L" ++ pkgfn)
+  pkgmdls <- words . unlines . filter isMdl . lines <$> mhsOut env ("-L" ++ pkgfn)
   let bad = pkgmdls \\ (mdls ++ omdls)
   when (not (null bad)) $ do
     putStrLn "Warning: package modules not mentioned in exposed-modules nor other-modules"
