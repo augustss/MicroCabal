@@ -1,10 +1,8 @@
 module MicroCabal.Backend.MHS(mhsBackend) where
 import Control.Monad
 import Data.List(dropWhileEnd, (\\))
-import Data.Maybe(fromMaybe)
 import Data.Version
 import System.Directory
-import System.Environment(lookupEnv)
 import MicroCabal.Cabal
 import MicroCabal.Env
 import MicroCabal.Parse(readVersion)
