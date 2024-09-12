@@ -2,8 +2,10 @@ module MicroCabal.Env(
   Env(..),
   Target(..),
   Backend(..),
+  backendNameVers,
   PackageName,
   message,
+  pathModuleDir,
   ) where
 import MicroCabal.Cabal
 import MicroCabal.StackageList(PackageName)
@@ -22,7 +24,9 @@ data Target = TgtLib | TgtExe
   deriving (Eq)
 
 data Backend = Backend {
-  backendNameVers:: Env ->                       IO (String, Version), -- name and version
+  compilerName   :: String,                                 -- just the name, e.g., "ghc", "mhs"
+  compilerVersion:: Version,                                -- numeric version, e.g., makeVersion [9,8,2]
+  compiler       :: String,                                 -- name&version, e.g., "ghc-9.8.2"
   doesPkgExist   :: Env -> PackageName        -> IO Bool,   -- is the package available in the database?
   buildPkgExe    :: Env -> Section -> Section -> IO (),     -- build executable the current directory
   buildPkgLib    :: Env -> Section -> Section -> IO (),     -- build the package in the current directory
@@ -30,6 +34,12 @@ data Backend = Backend {
   installPkgLib  :: Env -> Section -> Section -> IO ()      -- install the package from the current directory
   }
 
+backendNameVers :: Backend -> (String, Version)
+backendNameVers b = (compilerName b, compilerVersion b)
+
 message :: Env -> Int -> String -> IO ()
 message env level msg | verbose env >= level = putStrLn $ replicate (2 * depth env) ' ' ++ msg
                       | otherwise = return ()
+
+pathModuleDir :: Env -> FilePath
+pathModuleDir env = distDir env ++ "/" ++ "autogen"

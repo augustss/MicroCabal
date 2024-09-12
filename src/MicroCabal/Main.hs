@@ -42,16 +42,18 @@ setupEnv :: IO Env
 setupEnv = do
   home <- getEnv "HOME"
   let cdir = home </> ".mcabal"
-  return Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0,
-              backend = mhsBackend, recursive = False, targets = [TgtLib, TgtExe] }
+      env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0,
+                 backend = undefined, recursive = False, targets = [TgtLib, TgtExe] }
+  be <- mhsBackend env
+  return env{ backend = be }
 
 decodeCommonArgs :: Env -> IO (Env, [String])
 decodeCommonArgs env = do
   let loop e ("-v"    : as) = loop e{ verbose = verbose e + 1 } as
       loop e ("-q"    : as) = loop e{ verbose = -1 } as
       loop e ("-r"    : as) = loop e{ recursive = True } as
-      loop e ("--ghc" : as) = loop e{ backend = ghcBackend } as
-      loop e ("--mhs" : as) = loop e{ backend = mhsBackend } as
+      loop e ("--ghc" : as) = do be <- ghcBackend env; loop e{ backend = be } as
+      loop e ("--mhs" : as) = do be <- mhsBackend env; loop e{ backend = be } as
       loop e as = return (e, as)
   loop env =<< getArgs
 
@@ -141,9 +143,10 @@ cmdUpdate _ _ = usage
 -- XXX more...
 distPkgs :: [StackagePackage]
 distPkgs =
-  [ StackagePackage "containers" (makeVersion [0,6,8])   False []
-  , StackagePackage "mtl"        (makeVersion [2,3,1])   False []
-  , StackagePackage "time"       (makeVersion [1,12,2])  False []
+  [ StackagePackage "containers" (makeVersion [0,6,8])    False []
+  , StackagePackage "deepseq"    (makeVersion [1,5,0,0])  False []
+  , StackagePackage "mtl"        (makeVersion [2,3,1])    False []
+  , StackagePackage "time"       (makeVersion [1,12,2])   False []
   ]
 
 -----------------------------------------
@@ -220,21 +223,25 @@ getGlobal :: Cabal -> Section
 getGlobal (Cabal sects) =
   fromMaybe (error "no global section") $ listToMaybe [ s | s@(Section "global" _ _) <- sects ]
 
-createPathFile :: Env -> Section -> IO ()
-createPathFile env (Section _ name _) = do
+createPathFile :: Env -> Section -> Section -> IO ()
+createPathFile env (Section _ _ glob) (Section _ name _) = do
   let mdlName = "Paths_" ++ map (\ c -> if c == '-' then '_' else c) name
-      pathName = pathModuleDir </> mdlName ++ ".hs"
+      pathName = pathModuleDir env </> mdlName ++ ".hs"
+      vers = getVersion glob "version"
+--      dataDir = "???" -- cabalDir env </> "COMPILER-VERSION" </> "data" </> pkgVers </> "data"
   message env 1 $ "Creating path module " ++ pathName
-  mkdir env pathModuleDir
+  mkdir env (pathModuleDir env)
   writeFile pathName $
     "module " ++ mdlName ++ " where\n" ++
-    "-- nothing yet\n"
+    "import Data.Version\n" ++
+    "version :: Version; version = make" ++ show vers ++ "\n"
+--    ++ "getDataDir :: IO FilePath; getDataDir = return " ++ show dataDir ++ "\n"
 
 build :: Env -> IO ()
 build env = do
   fn <- findCabalFile env
   rfile <- readFile fn
-  comp <- backendNameVers (backend env) env
+  let comp = backendNameVers (backend env)
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
@@ -247,7 +254,7 @@ build env = do
 buildExe :: Env -> Section -> Section -> IO ()
 buildExe env glob sect@(Section _ name flds) = do
   message env 0 $ "Building executable " ++ name
-  createPathFile env sect
+  createPathFile env glob sect
   let deps = getBuildDepends flds
       pkgs = [ p | (p, _, _) <- deps ]
   mapM_ (checkDep env) pkgs
@@ -256,7 +263,7 @@ buildExe env glob sect@(Section _ name flds) = do
 buildLib :: Env -> Section -> Section -> IO ()
 buildLib env glob sect@(Section _ name flds) = do
   message env 0 $ "Building library " ++ name
-  createPathFile env sect
+  createPathFile env glob sect
   let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
   buildPkgLib (backend env) env glob sect
@@ -294,7 +301,7 @@ install :: Env -> IO ()
 install env = do
   fn <- findCabalFile env
   rfile <- readFile fn
-  comp <- backendNameVers (backend env) env
+  let comp = backendNameVers (backend env)
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
@@ -358,7 +365,7 @@ cmdClean env _ = rmrf env (distDir env)
 cmdParse :: Env -> [String] -> IO ()
 cmdParse env [fn] = do
   rfile <- readFile fn
-  comp <- backendNameVers (backend env) env
+  let comp = backendNameVers (backend env)
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
       ncbl = normalize info cbl
