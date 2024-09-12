@@ -20,7 +20,7 @@ import MicroCabal.Unix
 --import MicroCabal.YAML
 
 version :: String
-version = "MicroCabal 0.1.1.0"
+version = "MicroCabal 0.2.1.0"
 
 main :: IO ()
 main = do
@@ -347,6 +347,7 @@ cmdHelp _ _ = putStrLn "\
   \  mcabal [FLAGS] update         retrieve new set of consistent packages\n\
   \\n\
   \Flags:\n\
+  \  --version                     show version\n\
   \  -v                            be more verbose (can be repeated)\n\
   \  -q                            be quiet\n\
   \  -r                            do recursive installs for missing packages\n\

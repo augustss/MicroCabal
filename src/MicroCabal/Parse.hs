@@ -47,6 +47,11 @@ preLex = loop 0
     loop _ ('\r':cs) =        loop 0     cs
     loop n ('\t':cs) = replicate k ' ' ++ loop 0 cs
          where k = 8 - n `rem` 8
+    -- Remove '--MHS'.
+    -- Hackage does not recognize mhs as a valid compiler yet.
+    -- Work around this by having mhs stuff in comments that
+    -- MicroCabal ignores.
+    loop 0 ('-':'-':'M':'H':'S':cs) = loop 0 cs
     loop n (c:cs)    = c    : loop (n+1) cs
 
 ------------------------------
