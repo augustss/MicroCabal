@@ -228,14 +228,15 @@ createPathFile env (Section _ _ glob) (Section _ name _) = do
   let mdlName = "Paths_" ++ map (\ c -> if c == '-' then '_' else c) name
       pathName = pathModuleDir env </> mdlName ++ ".hs"
       vers = getVersion glob "version"
---      dataDir = "???" -- cabalDir env </> "COMPILER-VERSION" </> "data" </> pkgVers </> "data"
+      pkgVers = name ++ "-" ++ showVersion vers
+      dataDir = cabalDir env </> compiler (backend env) </> "data" </> pkgVers </> "data"
   message env 1 $ "Creating path module " ++ pathName
   mkdir env (pathModuleDir env)
   writeFile pathName $
     "module " ++ mdlName ++ " where\n" ++
     "import Data.Version\n" ++
-    "version :: Version; version = make" ++ show vers ++ "\n"
---    ++ "getDataDir :: IO FilePath; getDataDir = return " ++ show dataDir ++ "\n"
+    "version :: Version; version = makeVersion " ++ show (versionBranch vers) ++ "\n" ++
+    "getDataDir :: IO FilePath; getDataDir = return " ++ show dataDir ++ "\n"
 
 build :: Env -> IO ()
 build env = do
