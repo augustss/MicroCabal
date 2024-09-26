@@ -3,7 +3,7 @@ MHS=$(MHSDIR)/bin/mhs
 
 bin/mcabal:	src/MicroCabal/*.hs src/MicroCabal/*/*.hs
 	@mkdir -p bin
-	MHSDIR=$(MHSDIR) $(MHS) -C -isrc -obin/mcabal MicroCabal.Main
+	MHSDIR=$(MHSDIR) $(MHS) -isrc -obin/mcabal MicroCabal.Main
 
 bin/gmcabal:	src/MicroCabal/*.hs src/MicroCabal/*/*.hs
 	@mkdir -p bin

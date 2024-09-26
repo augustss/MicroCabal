@@ -74,14 +74,19 @@ setupStdArgs env flds = do
       deps    = getBuildDependsPkg flds
       lang    = maybe [] (\ s -> ["-X" ++ s]) mlang
   buildDir <- getBuildDir env
-  return $ [ "-package-env=-", "-package-db=" ++ db, "-outputdir=" ++ buildDir, "-w"] ++
-           map ("-i" ++) srcDirs ++
-           ["-i" ++ pathModuleDir env] ++
-           map ("-I" ++) incDirs ++
-           map ("-X" ++) exts ++
-           lang ++
-           map ("-package " ++) deps ++
-           opts ++ cppOpts
+  return $
+    [ "-package-env=-",
+      "-package-db=" ++ db,
+      "-outputdir=" ++ buildDir,
+      "-w"] ++
+    map ("-i" ++) srcDirs ++
+    ["-i" ++ pathModuleDir env] ++
+    map ("-I" ++) incDirs ++
+    map ("-X" ++) exts ++
+    lang ++
+    map ("-package " ++) deps ++
+    opts ++
+    cppOpts
 
 binGhc :: FilePath
 binGhc  = "bin" </> "ghc"

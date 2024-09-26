@@ -54,8 +54,9 @@ mhsExists env pkgname = do
 builtinPackages :: [String]
 builtinPackages = ["array", "base", "deepseq", "directory", "process", "bytestring", "text", "fail"]
 
-setupStdArgs :: Env -> [Field] -> [String]
-setupStdArgs _env flds =
+setupStdArgs :: Env -> [Field] -> IO [String]
+setupStdArgs env flds = do
+  db <- getMhsDir env
   let srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
       defExts = getFieldStrings flds []      "default-extensions"
       exts    = getFieldStrings flds defExts "extensions"
@@ -65,11 +66,13 @@ setupStdArgs _env flds =
       incs    = getFieldStrings flds []      "include-dirs"
       exts'   = filter (`elem` mhsX) (exts ++ oexts)
       mhsX    = ["CPP"]
-  in  -- ["-i"] ++
-      map ("-i" ++) srcDirs ++
-      map ("-X" ++) exts' ++
-      map ("-I" ++) incs ++
-      opts ++ cppOpts
+  return $ -- ["-i"] ++
+    map ("-i" ++) srcDirs ++
+    ["-i" ++ pathModuleDir env] ++
+    map ("-X" ++) exts' ++
+    map ("-I" ++) incs ++
+    opts ++
+    cppOpts
 
 binMhs :: String
 binMhs  = "bin" </> "mhs"
@@ -82,7 +85,8 @@ mhsBuildExe env _ (Section _ name flds) = do
       bin     = distDir env </> binMhs </> name
   mkdir env $ distDir env </> binMhs
   mainIs' <- findMainIs env srcDirs mainIs
-  let args    = unwords $ setupStdArgs env flds ++
+  stdArgs <- setupStdArgs env flds
+  let args    = unwords $ stdArgs ++
                           ["-a."
                           ,"-o" ++ bin, mainIs']
   when (verbose env >= 0) $
@@ -112,13 +116,15 @@ findMainIs env (d:ds) fn = do
 mhsBuildLib :: Env -> Section -> Section -> IO ()
 mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
+  stdArgs <- setupStdArgs env flds
   let mdls = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
       omdls = getFieldStrings flds [] "other-modules"
       vers = getVersion glob "version"
       namever = name ++ "-" ++ showVersion vers
       pkgfn = namever ++ ".pkg"
-      args = unwords $ ["-P" ++ namever, "-o" ++ pkgfn] ++
-                       setupStdArgs env flds ++
+      args = unwords $ ["-P" ++ namever,
+                        "-o" ++ pkgfn] ++
+                       stdArgs ++
                        ["-a."] ++
                        mdls
       isMdl (' ':_) = True   -- Relies on -L output format
