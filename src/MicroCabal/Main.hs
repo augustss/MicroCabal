@@ -40,8 +40,9 @@ main = do
 
 setupEnv :: IO Env
 setupEnv = do
+  cdirm <- lookupEnv "CABALDIR"
   home <- getEnv "HOME"
-  let cdir = home </> ".mcabal"
+  let cdir = fromMaybe (home </> ".mcabal") cdirm
       env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0,
                  backend = undefined, recursive = False, targets = [TgtLib, TgtExe] }
   be <- mhsBackend env
@@ -223,13 +224,20 @@ getGlobal :: Cabal -> Section
 getGlobal (Cabal sects) =
   fromMaybe (error "no global section") $ listToMaybe [ s | s@(Section "global" _ _) <- sects ]
 
-createPathFile :: Env -> Section -> Section -> IO ()
-createPathFile env (Section _ _ glob) (Section _ name _) = do
-  let mdlName = "Paths_" ++ map (\ c -> if c == '-' then '_' else c) name
-      pathName = pathModuleDir env </> mdlName ++ ".hs"
-      vers = getVersion glob "version"
+makeDataPrefix :: Env -> Section -> Section -> FilePath
+makeDataPrefix env (Section _ _ glob) (Section _ name _) = 
+  let vers = getVersion glob "version"
       pkgVers = name ++ "-" ++ showVersion vers
-      dataDir = cabalDir env </> compiler (backend env) </> "data" </> pkgVers </> "data"
+      dataPrefix = cabalDir env </> compiler (backend env) </> "data" </> pkgVers
+  in  dataPrefix
+
+createPathFile :: Env -> Section -> Section -> IO ()
+createPathFile env gsect@(Section _ _ glob) sect@(Section _ name _) = do
+  let vers = getVersion glob "version"
+      mdlName = "Paths_" ++ map (\ c -> if c == '-' then '_' else c) name
+      pathName = pathModuleDir env </> mdlName ++ ".hs"
+      dataPrefix = makeDataPrefix env gsect sect
+      dataDir = dataPrefix </> "data"
   message env 1 $ "Creating path module " ++ pathName
   mkdir env (pathModuleDir env)
   writeFile pathName $
@@ -318,23 +326,46 @@ installExe :: Env -> Section -> Section -> IO ()
 installExe env glob sect@(Section _ name _) = do
   message env 0 $ "Installing executable " ++ name
   installDataFiles env glob sect
+  installIncludeFiles env glob sect
   installPkgExe (backend env) env glob sect
 
 installLib :: Env -> Section -> Section -> IO ()
 installLib env glob sect@(Section _ name _) = do
   message env 0 $ "Installing library " ++ name
   installDataFiles env glob sect
+  installIncludeFiles env glob sect
   installPkgLib (backend env) env glob sect
 
 installDataFiles :: Env -> Section -> Section -> IO ()
-installDataFiles env _glob _sect@(Section _ _ flds) = do
-  case getFieldStrings flds [] "data-files" of
+installDataFiles env glob@(Section _ _ gflds) sect@(Section _ _ flds) = do
+  let gdatas = getFieldStrings gflds [] "data-files"
+      datas  = getFieldStrings  flds [] "data-files"
+      dataPrefix = makeDataPrefix env glob sect
+      dataDir  = dataPrefix </> "data"
+  --print ("installDataFiles", gdatas ++ datas, dataDir)
+  case gdatas ++ datas of
     [] -> return ()
     pats -> do
       files <- matchFiles "." pats
       message env 1 $ "Installing data files " ++ unwords files
-      let tgt = undefined
-      copyFiles env "." files tgt
+      mkdir env dataDir
+      copyFiles env "." files dataDir
+
+installIncludeFiles :: Env -> Section -> Section -> IO ()
+installIncludeFiles env glob@(Section _ _ gflds) sect@(Section _ _ flds) = do
+  let gincs = getFieldStrings gflds [] "install-includes"
+      incs  = getFieldStrings  flds [] "install-includes"
+      dataPrefix = makeDataPrefix env glob sect
+      incDir  = dataPrefix </> "include"
+  case gincs ++ incs of
+    [] -> return ()
+    pats -> do
+      let inc = head $ getFieldStrings flds ["."] "include-dirs"
+      files <- matchFiles inc pats
+      print (pats, files)
+      message env 1 $ "Installing include files " ++ unwords files
+      mkdir env incDir
+      copyFiles env inc files incDir
 
 -----------------------------------------
 
@@ -357,6 +388,7 @@ cmdHelp _ _ = putStrLn "\
   \  --ghc                         compile using ghc\n\
   \  --mhs                         compile using mhs (default)\n\
   \\n\
+  \Installs go to $CABALDIR if set, otherwise $HOME/.mcabal.\n\
   \"
 
 -----------------------------------------
