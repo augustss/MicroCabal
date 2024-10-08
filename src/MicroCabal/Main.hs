@@ -327,6 +327,7 @@ installExe env glob sect@(Section _ name _) = do
   message env 0 $ "Installing executable " ++ name
   installDataFiles env glob sect
   installIncludeFiles env glob sect
+  installCFiles env glob sect
   installPkgExe (backend env) env glob sect
 
 installLib :: Env -> Section -> Section -> IO ()
@@ -334,6 +335,7 @@ installLib env glob sect@(Section _ name _) = do
   message env 0 $ "Installing library " ++ name
   installDataFiles env glob sect
   installIncludeFiles env glob sect
+  installCFiles env glob sect
   installPkgLib (backend env) env glob sect
 
 installDataFiles :: Env -> Section -> Section -> IO ()
@@ -362,10 +364,23 @@ installIncludeFiles env glob@(Section _ _ gflds) sect@(Section _ _ flds) = do
     pats -> do
       let inc = head $ getFieldStrings flds ["."] "include-dirs"
       files <- matchFiles inc pats
-      print (pats, files)
+      -- print (pats, files)
       message env 1 $ "Installing include files " ++ unwords files
       mkdir env incDir
       copyFiles env inc files incDir
+
+installCFiles :: Env -> Section -> Section -> IO ()
+installCFiles env glob@(Section _ _ gflds) sect@(Section _ _ flds) = do
+  let gcs = getFieldStrings gflds [] "c-sources"
+      cs  = getFieldStrings  flds [] "c-sources"
+      dataPrefix = makeDataPrefix env glob sect
+      cDir  = dataPrefix </> "cbits"
+  case gcs ++ cs of
+    [] -> return ()
+    files -> do
+      message env 1 $ "Installing C files " ++ unwords files
+      mkdir env cDir
+      mapM_ (\ f -> cp env f cDir) files
 
 -----------------------------------------
 

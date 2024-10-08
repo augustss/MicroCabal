@@ -4,7 +4,7 @@ module MicroCabal.Unix(
   wget, URL(..),
   tarx,
   rmrf,
-  cp,
+  cp, cpr,
   copyFiles,
   preserveCurrentDirectory,
   (</>),
@@ -82,8 +82,13 @@ rmrf env fn = cmd env $ "rm -rf " ++ fn
 -- Copy a file to a directory
 cp :: Env -> FilePath -> FilePath -> IO ()
 cp env s d = do
-  cmd env $ "rm -f " ++ d
   cmd env $ "cp " ++ s ++ " " ++ d
+
+-- Copy a file to a directory, delete first
+cpr :: Env -> FilePath -> FilePath -> IO ()
+cpr env s d = do
+  cmd env $ "rm -f " ++ d
+  cp env s d  
 
 copyFiles :: Env -> FilePath -> [FilePath] -> FilePath -> IO ()
 copyFiles env src fns tgt = do

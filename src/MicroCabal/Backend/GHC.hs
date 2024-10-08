@@ -148,7 +148,7 @@ ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
   let bin = distDir env ++ binGhc ++ name
       binDir = cabalDir env </> "bin"
   mkdir env binDir
-  cp env bin (binDir </> name)
+  cpr env bin (binDir </> name)
 
 getPackageId :: Env -> PackageName -> IO PackageName
 getPackageId env n = do
