@@ -32,6 +32,7 @@ executable mcabal
                        MicroCabal.Cabal
                        MicroCabal.Env
                        MicroCabal.Glob
+                       MicroCabal.Macros
                        MicroCabal.Normalize
                        MicroCabal.Parse
                        MicroCabal.Regex

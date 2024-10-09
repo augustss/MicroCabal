@@ -1,10 +1,11 @@
 module MicroCabal.Backend.MHS(mhsBackend) where
 import Control.Monad
-import Data.List(dropWhileEnd, (\\))
+import Data.List(dropWhileEnd, (\\), stripPrefix)
 import Data.Version
 import System.Directory
 import MicroCabal.Cabal
 import MicroCabal.Env
+import MicroCabal.Macros
 import MicroCabal.Parse(readVersion)
 import MicroCabal.Unix
 
@@ -43,7 +44,7 @@ initDB env = do
     mkdir env (dir </> "packages")
 
 mhsExists :: Env -> PackageName -> IO Bool
-mhsExists _ pkgname | pkgname `elem` builtinPackages = return True
+mhsExists _ pkgname | Just _ <- lookup pkgname builtinPackages = return True
 mhsExists env pkgname = do
   initDB env
   dir <- getMhsDir env
@@ -51,12 +52,33 @@ mhsExists env pkgname = do
   return $ any ((== pkgname) . init . dropWhileEnd (/= '-')) pkgs
 
 -- XXX These packages are part of mhs.
-builtinPackages :: [String]
-builtinPackages = ["array", "base", "deepseq", "directory", "process", "bytestring", "text", "fail"]
+-- The version numbers are totally fake.
+-- The version numbers are from GHC 9.8.2
+builtinPackages :: [(String, Version)]
+builtinPackages = [
+  ("array",     makeVersion [0,5,6,0]),
+  ("base",      makeVersion [4,14,0,0]),   -- some old version, current 4.19.1
+  ("deepseq",   makeVersion [1,5,0,0]),
+  ("directory", makeVersion [1,3,8,1]),
+  ("process",   makeVersion [1,6,18,0]),
+  ("bytestring",makeVersion [0,12,1,0]),
+  ("text",      makeVersion [2,1,1])
+  ]
+
+getPackageVersion :: Env -> String -> IO Version
+getPackageVersion _ pkgName | Just v <- lookup pkgName builtinPackages = return v
+getPackageVersion env pkgName = do
+  dir <- getMhsDir env
+  pkgs <- listDirectory (dir </> "packages")
+  let n = pkgName ++ "-"
+  case [ readVersion vers | p <- pkgs, Just verspkg <- [stripPrefix n p], Just vers <- [stripSuffix ".pkg" verspkg] ] of
+    [v] -> return v
+    []  -> error $ "Not installed: " ++ pkgName
+    _   -> error $ "Multiple version: " ++ pkgName
 
 setupStdArgs :: Env -> [Field] -> IO [String]
 setupStdArgs env flds = do
-  db <- getMhsDir env
+  -- db <- getMhsDir env
   let srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
       defExts = getFieldStrings flds []      "default-extensions"
       exts    = getFieldStrings flds defExts "extensions"
@@ -65,13 +87,17 @@ setupStdArgs env flds = do
       cppOpts = getFieldStrings flds []      "cpp-options"
       incs    = getFieldStrings flds []      "include-dirs"
       exts'   = filter (`elem` mhsX) (exts ++ oexts)
+      deps    = getBuildDependsPkg flds
       mhsX    = ["CPP"]
+  depvers <- mapM (getPackageVersion env) deps
+  let macros = genPkgVersionMacros (zip deps depvers)
   return $ -- ["-i"] ++
     map ("-i" ++) srcDirs ++
     ["-i" ++ pathModuleDir env] ++
     map ("-X" ++) exts' ++
     map ("-I" ++) incs ++
     opts ++
+    macros ++
     cppOpts
 
 binMhs :: String
@@ -149,3 +175,8 @@ mhsInstallLib env (Section _ _ glob) (Section _ name _) = do
   let vers = getVersion glob "version"
       namever = name ++ "-" ++ showVersion vers
   mhs env $ "-Q " ++ namever ++ ".pkg"
+
+---
+-- XXX
+stripSuffix :: String -> String -> Maybe String
+stripSuffix suf str = reverse <$> stripPrefix (reverse suf) (reverse str)

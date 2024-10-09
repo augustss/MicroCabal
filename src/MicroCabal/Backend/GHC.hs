@@ -5,6 +5,7 @@ import Data.Version
 import System.Directory
 import MicroCabal.Cabal
 import MicroCabal.Env
+import MicroCabal.Macros
 import MicroCabal.Parse(readVersion)
 import MicroCabal.Unix
 
@@ -74,6 +75,8 @@ setupStdArgs env flds = do
       deps    = getBuildDependsPkg flds
       lang    = maybe [] (\ s -> ["-X" ++ s]) mlang
   buildDir <- getBuildDir env
+  depvers <- mapM (getPackageVersion env) deps
+  let macros = genPkgVersionMacros (zip deps depvers)
   return $
     [ "-package-env=-",
       "-package-db=" ++ db,
@@ -86,6 +89,7 @@ setupStdArgs env flds = do
     lang ++
     map ("-package " ++) deps ++
     opts ++
+    macros ++
     cppOpts
 
 binGhc :: FilePath
@@ -150,14 +154,21 @@ ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
   mkdir env binDir
   cpr env bin (binDir </> name)
 
+getPackageField :: String -> Env -> PackageName -> IO PackageName
+getPackageField fld env n = do
+  mr <- tryCmdOut env $ "ghc-pkg field " ++ n ++ " " ++ fld ++ " 2>/dev/null"  -- returns "fld: val"
+  last . words <$>
+    case mr of
+      Just r -> return r
+      Nothing -> do
+        dir <- getGhcDir env
+        cmdOut env ("ghc-pkg field  --package-db=" ++ dir ++ " " ++ n ++ " " ++ fld)  -- returns "fld: val"
+
 getPackageId :: Env -> PackageName -> IO PackageName
-getPackageId env n = do
-  mr <- tryCmdOut env $ "ghc-pkg field " ++ n ++ " id 2>/dev/null"  -- returns "id: pkg-id"
-  case mr of
-    Just r -> return $ last $ words r
-    Nothing -> do
-      dir <- getGhcDir env
-      last . words <$> cmdOut env ("ghc-pkg field  --package-db=" ++ dir ++ " " ++ n ++ " id")  -- returns "id: pkg-id"
+getPackageId = getPackageField "id"
+
+getPackageVersion :: Env -> PackageName -> IO Version
+getPackageVersion env n = readVersion <$> getPackageField "version" env n
 
 ghcInstallLib :: Env -> Section -> Section -> IO ()
 ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
