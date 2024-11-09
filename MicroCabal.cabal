@@ -1,6 +1,6 @@
 cabal-version:         3.0
 name:                  MicroCabal
-version:               0.3.0.0
+version:               0.3.1.0
 synopsis:              A partial Cabal replacement
 license:               Apache-2.0
 license-file:          LICENSE
@@ -40,6 +40,9 @@ executable mcabal
                        MicroCabal.Unix
                        MicroCabal.YAML
                        Text.ParserComb
-  build-depends:       base         >= 4.10 && < 4.25,
+  if impl(ghc)
+    build-depends:     base         >= 4.10 && < 4.25,
                        directory    >= 1.3 && < 1.6,
                        process      >= 1.6 && < 1.9,
+  if impl(mhs)
+    build-depends:     base         >= 0.1 && < 10.0,
