@@ -11,12 +11,12 @@ genPkgVersionMacros pkgs =
 
 generateMacros :: String -> Version -> [String]
 generateMacros name version =
-  [ concat [ "-DVERSION_", name, "=", show (showVersion version) ]
-  , concat [ "-DMIN_VERSION_", name, "(major1,major2,minor)=("
-           , "(major1)<", major1, "||"
-           , "(major1)==", major1, "&&(major2)<", major2, "||"
-           , "(major1)==", major1, "&&(major2)==", major2, "&&(minor)<=", minor
-           , ")"
+  [ concat [ "'-DVERSION_", name, "=", show (showVersion version), "'" ]
+  , concat [ "'-DMIN_VERSION_", name, "(x,y,z)=("
+           , "(x)<", major1, "||"
+           , "(x)==", major1, "&&(y)<", major2, "||"
+           , "(x)==", major1, "&&(y)==", major2, "&&(z)<=", minor
+           , ")'"
            ]
   ]
   where
