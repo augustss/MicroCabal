@@ -57,9 +57,10 @@ mhsExists env pkgname = do
 builtinPackages :: [(String, Version)]
 builtinPackages = [
   ("array",     makeVersion [0,5,6,0]),
-  ("base",      makeVersion [4,14,0,0]),   -- some old version, current 4.19.1
+  ("base",      makeVersion [4,19,1,0]),
   ("deepseq",   makeVersion [1,5,0,0]),
   ("directory", makeVersion [1,3,8,1]),
+  ("hashable",  makeVersion [1,0,0,0]),    -- very rudimentary
   ("process",   makeVersion [1,6,18,0]),
   ("bytestring",makeVersion [0,12,1,0]),
   ("text",      makeVersion [2,1,1])
