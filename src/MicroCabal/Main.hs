@@ -232,8 +232,9 @@ makeDataPrefix env (Section _ _ glob) (Section _ name _) =
   in  dataPrefix
 
 createPathFile :: Env -> Section -> Section -> IO ()
-createPathFile env gsect@(Section _ _ glob) sect@(Section _ name _) = do
+createPathFile env gsect@(Section _ _ glob) sect = do
   let vers = getVersion glob "version"
+      name = getFieldString glob "name"
       mdlName = "Paths_" ++ map (\ c -> if c == '-' then '_' else c) name
       pathName = pathModuleDir env </> mdlName ++ ".hs"
       dataPrefix = makeDataPrefix env gsect sect
