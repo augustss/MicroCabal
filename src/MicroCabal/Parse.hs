@@ -101,11 +101,13 @@ lower = map toLower
 -- Hackage does not recognize mhs as a valid compiler yet.
 -- Work around this by having mhs stuff in comments that
 -- MicroCabal ignores.
+-- Also get rid of lines that end in '--NOT_MHS'
 dropCabalComments :: String -> String
 dropCabalComments = unlines . map cmt . lines
   where
     cmt ('-':'-':'M':'H':'S':cs) = cmt cs
     cmt s | take 2 (dropWhile (== ' ') s) == "--" = ""
+          | "--NOT_MHS" `isSuffixOf` s = ""
           | otherwise = s
 
 satisfySome :: String -> (Char -> Bool) -> P [Char]
