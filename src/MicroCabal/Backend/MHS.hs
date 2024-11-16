@@ -1,6 +1,7 @@
 module MicroCabal.Backend.MHS(mhsBackend) where
 import Control.Monad
 import Data.List(dropWhileEnd, (\\), stripPrefix)
+import Data.Maybe
 import Data.Version
 import System.Directory
 import MicroCabal.Cabal
@@ -8,16 +9,19 @@ import MicroCabal.Env
 import MicroCabal.Macros
 import MicroCabal.Parse(readVersion)
 import MicroCabal.Unix
+import System.Environment
 
 mhsBackend :: Env -> IO Backend
 mhsBackend env = do
-  numVersion <- takeWhile (/= '\n') <$> cmdOut env "mhs --numeric-version"
+  numVersion <- takeWhile (/= '\n') <$> mhsOut env "--numeric-version"
+  mmhs <- lookupEnv "MHS"
   let mhsVersion = "mhs-" ++ numVersion
       version = readVersion numVersion  
   return Backend {
     compilerName = "mhs",
     compilerVersion = version,
     compiler = mhsVersion,
+    compilerExe = fromMaybe "mhs" mmhs,
     doesPkgExist = mhsExists,
     buildPkgExe = mhsBuildExe,
     buildPkgLib = mhsBuildLib,
@@ -27,7 +31,7 @@ mhsBackend env = do
 
 mhsNameVers :: Env -> IO (String, Version)
 mhsNameVers env = do
-  v <- readVersion . takeWhile (/= '\n') <$> cmdOut env "mhs --numeric-version"
+  v <- readVersion . takeWhile (/= '\n') <$> mhsOut env "--numeric-version"
   return ("mhs", v)
 
 getMhsDir :: Env -> IO FilePath
@@ -40,7 +44,6 @@ initDB env = do
   dir <- getMhsDir env
   b <- doesDirectoryExist dir
   when (not b) $ do
-    --cmd env $ "mhs-pkg init " ++ dir
     mkdir env (dir </> "packages")
 
 mhsExists :: Env -> PackageName -> IO Bool
@@ -124,11 +127,11 @@ mhsBuildExe env _ (Section _ name flds) = do
 mhs :: Env -> String -> IO ()
 mhs env args = do
   let flg = if verbose env == 1 then "-l " else if verbose env > 1 then "-v " else ""
-  cmd env $ "mhs " ++ flg ++ args
+  cmd env $ compilerExe (backend env) ++ " " ++ flg ++ args
 
 mhsOut :: Env -> String -> IO String
 mhsOut env args =
-  cmdOut env $ "mhs " ++ args
+  cmdOut env $ compilerExe (backend env) ++ " " ++ args
 
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
 findMainIs _ [] fn = error $ "cannot find " ++ show fn

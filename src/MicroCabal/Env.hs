@@ -27,6 +27,7 @@ data Backend = Backend {
   compilerName   :: String,                                 -- just the name, e.g., "ghc", "mhs"
   compilerVersion:: Version,                                -- numeric version, e.g., makeVersion [9,8,2]
   compiler       :: String,                                 -- name&version, e.g., "ghc-9.8.2"
+  compilerExe    :: String,                                 -- name of binary
   doesPkgExist   :: Env -> PackageName        -> IO Bool,   -- is the package available in the database?
   buildPkgExe    :: Env -> Section -> Section -> IO (),     -- build executable the current directory
   buildPkgLib    :: Env -> Section -> Section -> IO (),     -- build the package in the current directory
