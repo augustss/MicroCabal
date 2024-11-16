@@ -230,7 +230,7 @@ makeDataPrefix :: Env -> Section -> Section -> FilePath
 makeDataPrefix env (Section _ _ glob) (Section _ name _) = 
   let vers = getVersion glob "version"
       pkgVers = name ++ "-" ++ showVersion vers
-      dataPrefix = cabalDir env </> compiler (backend env) </> "data" </> pkgVers
+      dataPrefix = cabalDir env </> compiler (backend env) </> "packages" </> "data" </> pkgVers
   in  dataPrefix
 
 createPathFile :: Env -> Section -> Section -> IO ()
