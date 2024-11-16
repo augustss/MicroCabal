@@ -13,9 +13,10 @@ import System.Environment
 
 ghcBackend :: Env -> IO Backend
 ghcBackend env = do
-  -- Actual GHC version.
-  numVersion <- takeWhile (/= '\n') <$> ghcOut env "--numeric-version"
   mghc <- lookupEnv "GHC"
+  let exe = fromMaybe "ghc" mghc
+  -- Actual GHC version.
+  numVersion <- takeWhile (/= '\n') <$> cmdOut env (exe ++ " --numeric-version")
   -- GHC version used in the stackage snapshot.
   snapVersion <- readFile (cabalDir env </> "ghc-version")
   let ghcVersion = "ghc-" ++ numVersion
@@ -28,7 +29,7 @@ ghcBackend env = do
     compilerName = "ghc",
     compilerVersion = version,
     compiler = ghcVersion,
-    compilerExe = fromMaybe "ghc" mghc,
+    compilerExe = exe,
     doesPkgExist = ghcExists,
     buildPkgExe = ghcBuildExe,
     buildPkgLib = ghcBuildLib,
@@ -223,7 +224,7 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
 ghc :: Env -> String -> IO ()
 ghc env args = cmd env $ compilerExe (backend env) ++ " " ++ args
 
-ghcOut :: Env -> String -> IO String
-ghcOut env args = cmdOut env $ compilerExe (backend env) ++ " " ++ args
+--ghcOut :: Env -> String -> IO String
+--ghcOut env args = cmdOut env $ compilerExe (backend env) ++ " " ++ args
 
 -- XXX Should do above for ghc-pkg as well.

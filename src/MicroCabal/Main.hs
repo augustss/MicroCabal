@@ -20,7 +20,7 @@ import MicroCabal.Unix
 --import MicroCabal.YAML
 
 version :: String
-version = "MicroCabal 0.3.1.2"
+version = "MicroCabal 0.4.0.0"
 
 main :: IO ()
 main = do
@@ -44,7 +44,7 @@ setupEnv = do
   home <- getEnv "HOME"
   let cdir = fromMaybe (home </> ".mcabal") cdirm
       env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0,
-                 backend = undefined, recursive = False, targets = [TgtLib, TgtExe] }
+                 backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtExe] }
   be <- mhsBackend env
   return env{ backend = be }
 
@@ -230,7 +230,7 @@ makeDataPrefix :: Env -> Section -> Section -> FilePath
 makeDataPrefix env (Section _ _ glob) (Section _ name _) = 
   let vers = getVersion glob "version"
       pkgVers = name ++ "-" ++ showVersion vers
-      dataPrefix = cabalDir env </> compiler (backend env) </> "packages" </> "data" </> pkgVers
+      dataPrefix = cabalDir env </> compiler (backend env) </> "packages" </> pkgVers
   in  dataPrefix
 
 createPathFile :: Env -> Section -> Section -> IO ()
@@ -425,4 +425,4 @@ cmdParse env [fn] = do
       ncbl = normalize info cbl
   --putStrLn $ showCabal cbl
   putStrLn $ showCabal ncbl
-cmdParse _ _ = undefined
+cmdParse _ _ = error "cmdParse"

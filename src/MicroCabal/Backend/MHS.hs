@@ -13,15 +13,16 @@ import System.Environment
 
 mhsBackend :: Env -> IO Backend
 mhsBackend env = do
-  numVersion <- takeWhile (/= '\n') <$> mhsOut env "--numeric-version"
   mmhs <- lookupEnv "MHS"
+  let exe = fromMaybe "mhs" mmhs
+  numVersion <- takeWhile (/= '\n') <$> cmdOut env (exe ++ " --numeric-version")
   let mhsVersion = "mhs-" ++ numVersion
       version = readVersion numVersion  
   return Backend {
     compilerName = "mhs",
     compilerVersion = version,
     compiler = mhsVersion,
-    compilerExe = fromMaybe "mhs" mmhs,
+    compilerExe = exe,
     doesPkgExist = mhsExists,
     buildPkgExe = mhsBuildExe,
     buildPkgLib = mhsBuildLib,
