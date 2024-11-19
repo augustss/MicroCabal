@@ -39,7 +39,7 @@ backendNameVers :: Backend -> (String, Version)
 backendNameVers b = (compilerName b, compilerVersion b)
 
 message :: Env -> Int -> String -> IO ()
-message env level msg | verbose env >= level = putStrLn $ replicate (2 * depth env) ' ' ++ msg
+message env level msg | verbose env >= level = putStrLn $ "mcabal: " ++ replicate (2 * depth env) ' ' ++ msg
                       | otherwise = return ()
 
 pathModuleDir :: Env -> FilePath

@@ -120,9 +120,7 @@ mhsBuildExe env _ (Section _ name flds) = do
   let args    = unwords $ stdArgs ++
                           ["-a."
                           ,"-o" ++ bin, mainIs']
-  when (verbose env >= 0) $
-    putStrLn $ "Build " ++ bin ++ " with mhs"
-  --putStrLn $ "mhs " ++ args
+  message env 0 $ "Build " ++ bin ++ " with mhs"
   mhs env args
 
 mhs :: Env -> String -> IO ()
@@ -164,8 +162,8 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
   pkgmdls <- words . unlines . filter isMdl . lines <$> mhsOut env ("-L" ++ pkgfn)
   let bad = pkgmdls \\ (mdls ++ omdls)
   when (not (null bad)) $ do
-    putStrLn "Warning: package modules not mentioned in exposed-modules nor other-modules"
-    mapM_ putStrLn bad
+    message env (-1) "Warning: package modules not mentioned in exposed-modules nor other-modules"
+    mapM_ (message env (-1)) bad
 
 mhsInstallExe :: Env -> Section -> Section -> IO ()
 mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do
