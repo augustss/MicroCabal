@@ -104,6 +104,7 @@ dropCabalComments = unlines . map cmt . lines
   where
     cmt ('-':'-':'M':'A':'B':'A':'L':cs) = cmt cs
     cmt s | take 2 (dropWhile (== ' ') s) == "--" = ""
+          | "--NOT_MHS" `isSuffixOf` s = ""
           | otherwise = s
 
 satisfySome :: String -> (Char -> Bool) -> P [Char]

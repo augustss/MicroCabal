@@ -1,6 +1,7 @@
 module MicroCabal.Backend.GHC(ghcBackend) where
 import Control.Monad
 import Data.List
+import Data.Maybe
 import Data.Version
 import System.Directory
 import MicroCabal.Cabal
@@ -8,11 +9,14 @@ import MicroCabal.Env
 import MicroCabal.Macros
 import MicroCabal.Parse(readVersion)
 import MicroCabal.Unix
+import System.Environment
 
 ghcBackend :: Env -> IO Backend
 ghcBackend env = do
+  mghc <- lookupEnv "GHC"
+  let exe = fromMaybe "ghc" mghc
   -- Actual GHC version.
-  numVersion <- takeWhile (/= '\n') <$> cmdOut env "ghc --numeric-version"
+  numVersion <- takeWhile (/= '\n') <$> cmdOut env (exe ++ " --numeric-version")
   -- GHC version used in the stackage snapshot.
   snapVersion <- readFile (cabalDir env </> "ghc-version")
   let ghcVersion = "ghc-" ++ numVersion
@@ -25,6 +29,7 @@ ghcBackend env = do
     compilerName = "ghc",
     compilerVersion = version,
     compiler = ghcVersion,
+    compilerExe = exe,
     doesPkgExist = ghcExists,
     buildPkgExe = ghcBuildExe,
     buildPkgLib = ghcBuildLib,
@@ -40,8 +45,8 @@ getGhcDir env = (cabalDir env </>) <$> getGhcName env
 
 getBuildDir :: Env -> IO FilePath
 getBuildDir env = do
-  ghc <- getGhcName env
-  return $ distDir env </> "build" </> ghc
+  ghcName <- getGhcName env
+  return $ distDir env </> "build" </> ghcName
 
 initDB :: Env -> IO ()
 initDB env = do
@@ -107,7 +112,7 @@ ghcBuildExe env _ (Section _ name flds) = do
   let args    = unwords $ ["-O"] ++ stdArgs ++ ["-o", bin, "--make", mainIs'] ++
                 [ ">/dev/null" | verbose env <= 0 ]
   message env 0 $ "Building executable " ++ bin ++ " with ghc"
-  cmd env $ "ghc " ++ args
+  ghc env args
 
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
 findMainIs _ [] fn = error $ "cannot find " ++ show fn
@@ -145,7 +150,7 @@ ghcBuildLib env (Section _ _ glob) (Section _ name flds) = do
     message env 0 $ "Building library " ++ name ++ " with ghc skipped, no modules"
    else do
     message env 0 $ "Building library " ++ name ++ " with ghc"
-    cmd env $ "ghc " ++ args
+    ghc env args
 
 ghcInstallExe :: Env -> Section -> Section -> IO ()
 ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
@@ -174,9 +179,9 @@ ghcInstallLib :: Env -> Section -> Section -> IO ()
 ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
   buildDir <- getBuildDir env
-  ghc <- getGhcDir env
+  ghcDir <- getGhcDir env
   let namever = name ++ "-" ++ showVersion vers
-      destDir = ghc </> namever
+      destDir = ghcDir </> namever
       vers = getVersion glob "version"
       archOut = destDir </> "libHS" ++ namever ++ "-mcabal.a"
   mkdir env destDir
@@ -215,3 +220,11 @@ ghcInstallLib env (Section _ _ glob) (Section _ name flds) = do
       quiet = if verbose env > 0 then "" else " >/dev/null"
   writeFile pkgFn desc
   cmd env $ "ghc-pkg update --package-db=" ++ db ++ " " ++ pkgFn ++ quiet
+
+ghc :: Env -> String -> IO ()
+ghc env args = cmd env $ compilerExe (backend env) ++ " " ++ args
+
+--ghcOut :: Env -> String -> IO String
+--ghcOut env args = cmdOut env $ compilerExe (backend env) ++ " " ++ args
+
+-- XXX Should do above for ghc-pkg as well.
