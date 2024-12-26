@@ -322,6 +322,7 @@ install env = do
       sect s@(Section "executable" _ _) | TgtExe `elem` targets env = installExe env glob s
       sect s@(Section "library"    _ _) | TgtLib `elem` targets env = installLib env glob s
       sect _ = return ()
+  message env 3 $ "Unnormalized Cabal file:\n" ++ show cbl
   message env 2 $ "Normalized Cabal file:\n" ++ show ncbl
   mapM_ sect $ addMissing sects
 
