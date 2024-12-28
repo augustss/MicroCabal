@@ -97,15 +97,12 @@ lower :: String -> String
 lower = map toLower
 
 -- Change lines with first non-space being '--' into just a newline
--- Remove '--MHS'.
--- Hackage does not recognize mhs as a valid compiler yet.
--- Work around this by having mhs stuff in comments that
--- MicroCabal ignores.
--- Also get rid of lines that end in '--NOT_MHS'
+-- Remove '--MCABAL'.  This is because cabal does not allow conditionals
+-- for the global section, and mhs needs that.
 dropCabalComments :: String -> String
 dropCabalComments = unlines . map cmt . lines
   where
-    cmt ('-':'-':'M':'H':'S':cs) = cmt cs
+    cmt ('-':'-':'M':'C':'A':'B':'A':'L':cs) = cmt cs
     cmt s | take 2 (dropWhile (== ' ') s) == "--" = ""
           | "--NOT_MHS" `isSuffixOf` s = ""
           | otherwise = s
