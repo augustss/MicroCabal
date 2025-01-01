@@ -300,8 +300,8 @@ pField = do
 pCond :: P Cond
 pCond = pCor
   where
-    pCor  = foldr1 Cor  <$> esepBy1 pCand (pStr "&&")
-    pCand = foldr1 Cand <$> esepBy1 pCnot (pStr "||")
+    pCor  = foldr1 Cor  <$> esepBy1 pCand (pStr "||")
+    pCand = foldr1 Cand <$> esepBy1 pCnot (pStr "&&")
     pCnot = (Cnot <$> (pStr "!" *> pCnot)) <|> pCOp
     pCOp  = (CBool <$> pBool)
         <|< (pKeyWordNC "arch" *> pParens (Carch <$> pName))
