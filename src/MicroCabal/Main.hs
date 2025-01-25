@@ -408,6 +408,7 @@ cmdHelp _ _ = putStrLn "\
   \\n\
   \Flags:\n\
   \  --version                     show version\n\
+  \  -fFLAGS                       set cabal flags\n\
   \  -v                            be more verbose (can be repeated)\n\
   \  -q                            be quiet\n\
   \  -r                            do recursive installs for missing packages\n\
