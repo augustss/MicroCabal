@@ -16,6 +16,7 @@ data Env = Env {
   verbose  :: Int,                -- how chatty, default is 0, -1=say nothing, 0=minimal messages, 1=debug info
   depth    :: Int,                -- nesting depth for recursive builds, default is 0
   recursive:: Bool,               -- do recursive builds, default is False
+  eflags   :: [(String, Bool)],   -- Cabal flags
   backend  :: Backend,            -- which compiler to use, default is MHS
   targets  :: [Target]            -- only build/install these
   }

@@ -43,20 +43,26 @@ setupEnv = do
   cdirm <- lookupEnv "CABALDIR"
   home <- getEnv "HOME"
   let cdir = fromMaybe (home </> ".mcabal") cdirm
-      env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0,
+      env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, eflags = [],
                  backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtExe] }
   be <- mhsBackend env
   return env{ backend = be }
 
 decodeCommonArgs :: Env -> IO (Env, [String])
 decodeCommonArgs env = do
-  let loop e ("-v"    : as) = loop e{ verbose = verbose e + 1 } as
-      loop e ("-q"    : as) = loop e{ verbose = -1 } as
-      loop e ("-r"    : as) = loop e{ recursive = True } as
-      loop e ("--ghc" : as) = do be <- ghcBackend env; loop e{ backend = be } as
-      loop e ("--mhs" : as) = do be <- mhsBackend env; loop e{ backend = be } as
+  let loop e ("-v"        : as) = loop e{ verbose = verbose e + 1 } as
+      loop e ("-q"        : as) = loop e{ verbose = -1 } as
+      loop e ("-r"        : as) = loop e{ recursive = True } as
+      loop e (('-':'f':s) : as) = loop e{ eflags = decodeCabalFlags s } as
+      loop e ("--ghc"     : as) = do be <- ghcBackend env; loop e{ backend = be } as
+      loop e ("--mhs"     : as) = do be <- mhsBackend env; loop e{ backend = be } as
       loop e as = return (e, as)
   loop env =<< getArgs
+
+decodeCabalFlags :: String -> [(Name, Bool)]
+decodeCabalFlags = map f . words
+  where f ('-':s) = (s, False)
+        f s       = (s, True)
 
 usage :: IO ()
 usage = do
@@ -255,7 +261,7 @@ build env = do
   rfile <- readFile fn
   let comp = backendNameVers (backend env)
   let cbl = parseCabal fn rfile
-      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
+      info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
       glob = getGlobal ncbl
       sect s@(Section "executable" _ _) | TgtExe `elem` targets env = buildExe env glob s
@@ -316,7 +322,7 @@ install env = do
   rfile <- readFile fn
   let comp = backendNameVers (backend env)
   let cbl = parseCabal fn rfile
-      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
+      info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
       glob = getGlobal ncbl
       sect s@(Section "executable" _ _) | TgtExe `elem` targets env = installExe env glob s
@@ -422,7 +428,7 @@ cmdParse env [fn] = do
   rfile <- readFile fn
   let comp = backendNameVers (backend env)
   let cbl = parseCabal fn rfile
-      info = FlagInfo { os = I.os, arch = I.arch, flags = [], impl = comp }
+      info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
       ncbl = normalize info cbl
   --putStrLn $ showCabal cbl
   putStrLn $ showCabal ncbl

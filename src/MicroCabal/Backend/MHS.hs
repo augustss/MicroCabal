@@ -96,7 +96,7 @@ setupStdArgs env flds = do
       mhsX    = ["CPP"]
   depvers <- mapM (getPackageVersion env) deps
   let macros = genPkgVersionMacros (zip deps depvers)
-  return $ -- ["-i"] ++
+  return $ ["-i"] ++
     map ("-i" ++) srcDirs ++
     ["-i" ++ pathModuleDir env] ++
     map ("-X" ++) exts' ++
