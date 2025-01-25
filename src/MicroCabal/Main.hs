@@ -267,6 +267,7 @@ build env = do
       sect s@(Section "executable" _ _) | TgtExe `elem` targets env = buildExe env glob s
       sect s@(Section "library"    _ _) | TgtLib `elem` targets env = buildLib env glob s
       sect _ = return ()
+  message env 3 $ "Unnormalized Cabal file:\n" ++ show cbl
   message env 2 $ "Normalized Cabal file:\n" ++ show ncbl
   mapM_ sect $ addMissing sects
 
@@ -430,6 +431,8 @@ cmdParse env [fn] = do
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
       ncbl = normalize info cbl
-  --putStrLn $ showCabal cbl
+  putStrLn "Unnormalized:"
+  putStrLn $ showCabal cbl
+  putStrLn "Normalized:"
   putStrLn $ showCabal ncbl
 cmdParse _ _ = error "cmdParse"
