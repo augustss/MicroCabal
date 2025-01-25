@@ -20,7 +20,7 @@ import MicroCabal.Unix
 --import MicroCabal.YAML
 
 version :: String
-version = "MicroCabal 0.4.1.0"
+version = "MicroCabal 0.5.0.0"
 
 main :: IO ()
 main = do
