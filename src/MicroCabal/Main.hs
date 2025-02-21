@@ -329,8 +329,8 @@ install env = do
       info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
       glob = getGlobal ncbl
-      sect s@(Section "executable" _ _) | TgtExe `elem` targets env = installExe env glob s
-      sect s@(Section "library"    _ _) | TgtLib `elem` targets env = installLib env glob s
+      sect s@(Section "executable" _ _) | TgtExe `elem` targets env && isBuildable s = installExe env glob s
+      sect s@(Section "library"    _ _) | TgtLib `elem` targets env && isBuildable s = installLib env glob s
       sect _ = return ()
   message env 3 $ "Unnormalized Cabal file:\n" ++ show cbl
   message env 2 $ "Normalized Cabal file:\n" ++ show ncbl
