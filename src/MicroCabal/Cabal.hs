@@ -11,6 +11,7 @@ module MicroCabal.Cabal(
   Item,
   FlagInfo(..),
   showCabal, showSection,
+  getFieldBool,
   getFieldString,
   getFieldStringM,
   getFieldStrings,
@@ -101,6 +102,12 @@ indent s = "  " ++ concatMap (\ c -> if c == '\n' then "\n  " else [c]) s
 
 showSection :: Section -> String
 showSection (Section s n fs) = unlines $ ("  " ++ s ++ " " ++ n) : map (indent . showField) fs 
+
+getFieldBool :: Bool -> [Field] -> FieldName -> Bool
+getFieldBool dflt flds name =
+  case [ b | Field n (VBool b) <- flds, n == name ] of
+    [b] -> b
+    _   -> dflt
 
 getFieldString :: [Field] -> FieldName -> String
 getFieldString flds n =

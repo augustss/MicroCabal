@@ -19,8 +19,6 @@ module Text.ParserComb(
   TokenMachine(..),
   mapTokenState,
   ) where
---Ximport Prelude()
-import Prelude
 import Control.Applicative
 import Control.Monad
 
@@ -205,4 +203,3 @@ esepEndBy p sep = esepEndBy1 p sep <|< pure []
 
 esepEndBy1 :: Prsr tm t a -> Prsr tm t sep -> Prsr tm t [a]
 esepEndBy1 p sep = (:) <$> p <*> ((sep *> esepEndBy p sep) <|< pure [])
-
