@@ -151,7 +151,7 @@ cmdUpdate _ _ = usage
 -- Should get these from global-hints (?)
 distPkgs :: [StackagePackage]
 distPkgs =
-  [ StackagePackage "containers"   (makeVersion [0,6,8])    False []
+  [ StackagePackage "containers"   (makeVersion [0,8])      False []
   , StackagePackage "deepseq"      (makeVersion [1,5,0,0])  False []
   , StackagePackage "mtl"          (makeVersion [2,3,1])    False []
   , StackagePackage "time"         (makeVersion [1,12,2])   False []
