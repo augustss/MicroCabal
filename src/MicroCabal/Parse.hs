@@ -360,14 +360,14 @@ parsers =
   , "autogen-modules"                # pVComma
   , "build-depends"                  # pVLibs
   , "build-tool-depends"             # pVLibs  -- ??? pVComma -- XXX
-  , "build-tools"                    # pVComma -- XXX
+  , "build-tools"                    # pVLibs -- XXX
   , "buildable"                      # (VBool <$> pBool)
-  , "c-sources"                      # pVComma
-  , "cc-options"                     # pVComma
-  , "cmm-sources"                    # pVComma
-  , "cmm-options"                    # pVComma
+  , "c-sources"                      # pVOptComma
+  , "cc-options"                     # pVOptComma
+  , "cmm-sources"                    # pVOptComma
+  , "cmm-options"                    # pVOptComma
   , "cpp-options"                    # pVOptComma
-  , "cxx-options"                    # pVComma
+  , "cxx-options"                    # pVOptComma
   , "default-extensions"             # pVOptComma
   , "default-language"               # (VItem <$> pItem)
   , "exposed-modules"                # pVOptComma
@@ -401,9 +401,9 @@ parsers =
   , "other-modules"                  # pVOptComma
   , "pkg-config-depends"             # pVComma
   , "virtual-modules"                # pVComma
-  --- library fields                 
+  --- library fields
   , "visibility"                     # (VItem <$> pItem)
-  --- package fields                 
+  --- package fields
   , "author"                         # pFreeText
   , "bug-reports"                    # pFreeText
   , "build-type"                     # (VItem <$> pItem)
@@ -428,7 +428,7 @@ parsers =
   , "synopsis"                       # pFreeTextX
   , "tested-with"                    # pFreeText
   , "version"                        # (VVersion <$> pVersion)
-  -- test suite fields              
+  -- test suite fields
   , "main-is"                        # (VItem <$> pItem)
   , "test-module"                    # (VItem <$> pItem)
   , "type"                           # (VItem <$> pItem)
@@ -441,8 +441,8 @@ parsers =
   ]
   where (#) = (,)
   -- XXX use local fixity
-  
-  
+
+
 ----------------------------------------------------------------------
 
 -- XXX Wrong for strings
