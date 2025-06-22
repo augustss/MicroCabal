@@ -339,6 +339,7 @@ pSection :: P Section
 pSection = pWhite *> (
       Section <$> pKeyWordNC "common"            <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "library"           <*>  libName <*> pFields
+  <|< Section <$> pKeyWordNC "foreign-library"   <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "executable"        <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "source-repository" <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "flag"              <*>    pName <*> pFields
@@ -401,9 +402,11 @@ parsers =
   , "other-modules"                  # pVOptComma
   , "pkg-config-depends"             # pVComma
   , "virtual-modules"                # pVComma
-  --- library fields                 
+  --- library fields
   , "visibility"                     # (VItem <$> pItem)
-  --- package fields                 
+  --- foreign-library fields
+  , "type"                           # pFreeText
+  --- package fields
   , "author"                         # pFreeText
   , "bug-reports"                    # pFreeText
   , "build-type"                     # (VItem <$> pItem)
@@ -428,7 +431,7 @@ parsers =
   , "synopsis"                       # pFreeTextX
   , "tested-with"                    # pFreeText
   , "version"                        # (VVersion <$> pVersion)
-  -- test suite fields              
+  -- test suite fields
   , "main-is"                        # (VItem <$> pItem)
   , "test-module"                    # (VItem <$> pItem)
   , "type"                           # (VItem <$> pItem)
@@ -441,8 +444,8 @@ parsers =
   ]
   where (#) = (,)
   -- XXX use local fixity
-  
-  
+
+
 ----------------------------------------------------------------------
 
 -- XXX Wrong for strings
