@@ -17,7 +17,7 @@ mhsBackend env = do
   let exe = fromMaybe "mhs" mmhs
   numVersion <- takeWhile (/= '\n') <$> cmdOut env (exe ++ " --numeric-version")
   let mhsVersion = "mhs-" ++ numVersion
-      version = readVersion numVersion  
+      version = readVersion numVersion
   return Backend {
     compilerName = "mhs",
     compilerVersion = version,
@@ -26,6 +26,7 @@ mhsBackend env = do
     doesPkgExist = mhsExists,
     buildPkgExe = mhsBuildExe,
     buildPkgLib = mhsBuildLib,
+    buildPkgForLib = mhsBuildForeignLib,
     installPkgExe = mhsInstallExe,
     installPkgLib = mhsInstallLib
     }
@@ -141,6 +142,17 @@ findMainIs env (d:ds) fn = do
     return fn'
    else
     findMainIs env ds fn
+
+mhsBuildForeignLib :: Env -> Section -> Section -> IO ()
+mhsBuildForeignLib env (Section _ _ glob) (Section _ name flds) = do
+  initDB env
+  stdArgs <- setupStdArgs env flds
+  let omdls = getFieldStrings flds (error "no other-modules") "other-modules"
+      vers = getVersion glob "version"
+      namever = name ++ "-" ++ showVersion vers
+      pkgfn = distDir env </> "lib" ++ namever ++ ".so"
+      args = unwords $ ["-c", "-optc", "--shared", "-optc", "-fPIC", "-o" ++ pkgfn] ++ stdArgs ++ omdls
+  mhs env args
 
 mhsBuildLib :: Env -> Section -> Section -> IO ()
 mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do

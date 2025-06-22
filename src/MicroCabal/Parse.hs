@@ -339,6 +339,7 @@ pSection :: P Section
 pSection = pWhite *> (
       Section <$> pKeyWordNC "common"            <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "library"           <*>  libName <*> pFields
+  <|< Section <$> pKeyWordNC "foreign-library"   <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "executable"        <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "source-repository" <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "flag"              <*>    pName <*> pFields
@@ -403,6 +404,8 @@ parsers =
   , "virtual-modules"                # pVComma
   --- library fields
   , "visibility"                     # (VItem <$> pItem)
+  --- foreign-library fields
+  , "type"                           # pFreeText
   --- package fields
   , "author"                         # pFreeText
   , "bug-reports"                    # pFreeText

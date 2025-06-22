@@ -21,7 +21,7 @@ data Env = Env {
   targets  :: [Target]            -- only build/install these
   }
 
-data Target = TgtLib | TgtExe
+data Target = TgtLib | TgtFor | TgtExe
   deriving (Eq)
 
 data Backend = Backend {
@@ -32,6 +32,7 @@ data Backend = Backend {
   doesPkgExist   :: Env -> PackageName        -> IO Bool,   -- is the package available in the database?
   buildPkgExe    :: Env -> Section -> Section -> IO (),     -- build executable the current directory
   buildPkgLib    :: Env -> Section -> Section -> IO (),     -- build the package in the current directory
+  buildPkgForLib :: Env -> Section -> Section -> IO (),     -- build the foreign-library in the current directory
   installPkgExe  :: Env -> Section -> Section -> IO (),     -- install the package from the current directory
   installPkgLib  :: Env -> Section -> Section -> IO ()      -- install the package from the current directory
   }
