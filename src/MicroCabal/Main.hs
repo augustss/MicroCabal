@@ -44,7 +44,7 @@ setupEnv = do
   home <- getEnv "HOME"
   let cdir = fromMaybe (home </> ".mcabal") cdirm
       env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, eflags = [],
-                 backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtExe] }
+                 backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtFor, TgtExe] }
   be <- mhsBackend env
   return env{ backend = be }
 
@@ -264,8 +264,9 @@ build env = do
       info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
       glob = getGlobal ncbl
-      sect s@(Section "executable" _ _) | TgtExe `elem` targets env && isBuildable s = buildExe env glob s
-      sect s@(Section "library"    _ _) | TgtLib `elem` targets env && isBuildable s = buildLib env glob s
+      sect s@(Section "executable"      _ _) | TgtExe `elem` targets env && isBuildable s = buildExe env glob s
+      sect s@(Section "library"         _ _) | TgtLib `elem` targets env && isBuildable s = buildLib env glob s
+      sect s@(Section "foreign-library" _ _) | TgtFor `elem` targets env && isBuildable s = buildForeignLib env glob s
       sect _ = return ()
   message env 3 $ "Unnormalized Cabal file:\n" ++ show cbl
   message env 2 $ "Normalized Cabal file:\n" ++ show ncbl
@@ -290,6 +291,14 @@ buildLib env glob sect@(Section _ name flds) = do
   let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
   buildPkgLib (backend env) env glob sect
+
+buildForeignLib :: Env -> Section -> Section -> IO ()
+buildForeignLib env glob sect@(Section _ name flds) = do
+  message env 0 $ "Building foreign-library " ++ name
+  createPathFile env glob sect
+  let pkgs = getBuildDependsPkg flds
+  mapM_ (checkDep env) pkgs
+  buildPkgForLib (backend env) env glob sect
 
 checkDep :: Env -> PackageName -> IO ()
 checkDep env pkg = do

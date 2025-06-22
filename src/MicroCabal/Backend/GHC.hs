@@ -33,6 +33,7 @@ ghcBackend env = do
     doesPkgExist = ghcExists,
     buildPkgExe = ghcBuildExe,
     buildPkgLib = ghcBuildLib,
+    buildPkgForLib = ghcBuildForeignLib,
     installPkgExe = ghcInstallExe,
     installPkgLib = ghcInstallLib
     }
@@ -131,6 +132,9 @@ getExposedModules flds = getFieldStrings flds [] "exposed-modules"
 
 getOtherModules :: [Field] -> [String]
 getOtherModules flds = getFieldStrings flds [] "other-modules"
+
+ghcBuildForeignLib :: Env -> Section -> Section -> IO ()
+ghcBuildForeignLib = error "NotImplemented"
 
 ghcBuildLib :: Env -> Section -> Section -> IO ()
 ghcBuildLib env (Section _ _ glob) (Section _ name flds) = do
