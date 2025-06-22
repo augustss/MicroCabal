@@ -144,7 +144,15 @@ findMainIs env (d:ds) fn = do
     findMainIs env ds fn
 
 mhsBuildForeignLib :: Env -> Section -> Section -> IO ()
-mhsBuildForeignLib = error "NotImplemented"
+mhsBuildForeignLib env (Section _ _ glob) (Section _ name flds) = do
+  initDB env
+  stdArgs <- setupStdArgs env flds
+  let omdls = getFieldStrings flds (error "no other-modules") "other-modules"
+      vers = getVersion glob "version"
+      namever = name ++ "-" ++ showVersion vers
+      pkgfn = distDir env </> "lib" ++ namever ++ ".so"
+      args = unwords $ ["-c", "-optc", "--shared", "-optc", "-fPIC", "-o" ++ pkgfn] ++ stdArgs ++ omdls
+  mhs env args
 
 mhsBuildLib :: Env -> Section -> Section -> IO ()
 mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do

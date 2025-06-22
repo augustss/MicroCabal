@@ -1,0 +1,10 @@
+cabal-version:      3.4
+name:               test-foreign-library
+version:            0.1
+
+foreign-library test-foreign-library
+    type:             native-shared
+    other-modules:    TestForeignLibrary
+    build-depends:    base
+    hs-source-dirs:   .
+    default-language: GHC2021
