@@ -429,7 +429,7 @@ parsers =
   , "stability"                      # pFreeText
   , "subdir"                         # pFreeText
   , "synopsis"                       # pFreeTextX
-  , "tested-with"                    # pFreeText
+  , "tested-with"                    # pVLibs
   , "version"                        # (VVersion <$> pVersion)
   -- test suite fields
   , "main-is"                        # (VItem <$> pItem)
