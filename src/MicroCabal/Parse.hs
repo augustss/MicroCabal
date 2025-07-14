@@ -167,11 +167,13 @@ pParens p = pStr "(" *> p <* pStr ")"
 pVersion :: P Version
 pVersion = pSpaces *> (makeVersion <$> esepBy1 pNumber pDot)
 
+-- A VersionRange can contain newlines.  I'm not sure where and how.
+-- So, allow it around && and ||.  At least it works for containers.
 pVersionRange :: P VersionRange
 pVersionRange = pVOr
   where
-    pVOr  = foldr1 VOr  <$> esepBy1 pVAnd (pStr "&&")
-    pVAnd = foldr1 VAnd <$> esepBy1 pVOp  (pStr "||")
+    pVOr  = foldr1 VOr  <$> esepBy1 pVAnd (pStrW "&&" <* pWhite)
+    pVAnd = foldr1 VAnd <$> esepBy1 pVOp  (pStrW "||" <* pWhite)
     pVOp  = (pVOper <*> (pSpaces *> pVersion))
         <|< pParens pVersionRange
         <|< (pStr "=="  *> pVEq)
@@ -255,7 +257,7 @@ pVOptComma :: P Value
 pVOptComma = VItems <$> pOptCommaList pItem
 
 pVLibs :: P Value
-pVLibs = VPkgs <$> pCommaList pPkg
+pVLibs = VPkgs <$> pOptCommaList pPkg
 
 pPkg :: P (Item, [Item], Maybe VersionRange)
 pPkg = (,,) <$> pNameW <*> (pSpaces *> pLibs) <*> optional pVersionRange
