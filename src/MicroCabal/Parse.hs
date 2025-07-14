@@ -274,11 +274,21 @@ pField = do
   fn <- lower <$> pFieldName
 --  traceM ("pFieldName fn=" ++ show fn)
   if fn == "if" then do
-    c <- pCond
+    cnd <- pCond
     pNewLine
-    t <- emany pField
+    thn <- emany pField
     pFieldSep
-    e <- do
+    -- some number of elif
+    elifs <- emany $ do
+      pWhite
+      pushColumn
+      _ <- pKeyWordNC "elif"
+      cc <- pCond
+      pNewLine
+      tt <- emany pField
+      pFieldSep
+      pure (cc, tt)
+    els <- do
       pWhite
       pushColumn
       _ <- pKeyWordNC "else"
@@ -287,7 +297,8 @@ pField = do
       pure fs
      <|<
       pure []
-    pure $ If c t e
+    let els' = foldr (\ (cc, tt) ee -> [If cc tt ee]) els elifs
+    pure $ If cnd thn els'
    else do
     pColon
 --    traceM $ "parser " ++ fn
