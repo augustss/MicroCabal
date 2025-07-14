@@ -350,6 +350,7 @@ pSection :: P Section
 pSection = pWhite *> (
       Section <$> pKeyWordNC "common"            <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "library"           <*>  libName <*> pFields
+  <|< Section <$> pKeyWordNC "foreign-library"   <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "executable"        <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "source-repository" <*>    pName <*> pFields
   <|< Section <$> pKeyWordNC "flag"              <*>    pName <*> pFields
@@ -371,14 +372,14 @@ parsers =
   , "autogen-modules"                # pVComma
   , "build-depends"                  # pVLibs
   , "build-tool-depends"             # pVLibs  -- ??? pVComma -- XXX
-  , "build-tools"                    # pVComma -- XXX
+  , "build-tools"                    # pVLibs -- XXX
   , "buildable"                      # (VBool <$> pBool)
-  , "c-sources"                      # pVComma
-  , "cc-options"                     # pVComma
-  , "cmm-sources"                    # pVComma
-  , "cmm-options"                    # pVComma
+  , "c-sources"                      # pVOptComma
+  , "cc-options"                     # pVOptComma
+  , "cmm-sources"                    # pVOptComma
+  , "cmm-options"                    # pVOptComma
   , "cpp-options"                    # pVOptComma
-  , "cxx-options"                    # pVComma
+  , "cxx-options"                    # pVOptComma
   , "default-extensions"             # pVOptComma
   , "default-language"               # (VItem <$> pItem)
   , "exposed-modules"                # pVOptComma
@@ -412,9 +413,11 @@ parsers =
   , "other-modules"                  # pVOptComma
   , "pkg-config-depends"             # pVComma
   , "virtual-modules"                # pVComma
-  --- library fields                 
+  --- library fields
   , "visibility"                     # (VItem <$> pItem)
-  --- package fields                 
+  --- foreign-library fields
+  , "type"                           # pFreeText
+  --- package fields
   , "author"                         # pFreeText
   , "bug-reports"                    # pFreeText
   , "build-type"                     # (VItem <$> pItem)
@@ -437,9 +440,9 @@ parsers =
   , "stability"                      # pFreeText
   , "subdir"                         # pFreeText
   , "synopsis"                       # pFreeTextX
-  , "tested-with"                    # pFreeText
+  , "tested-with"                    # pVLibs
   , "version"                        # (VVersion <$> pVersion)
-  -- test suite fields              
+  -- test suite fields
   , "main-is"                        # (VItem <$> pItem)
   , "test-module"                    # (VItem <$> pItem)
   , "type"                           # (VItem <$> pItem)
@@ -452,8 +455,8 @@ parsers =
   ]
   where (#) = (,)
   -- XXX use local fixity
-  
-  
+
+
 ----------------------------------------------------------------------
 
 -- XXX Wrong for strings
