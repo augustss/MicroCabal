@@ -139,8 +139,9 @@ cmdUpdate env [] = do
 --  putStrLn $ "==== " ++ ghcVersion
 --  putStrLn $ showYAML yml
 --  putStrLn $ show pkgs
+  dist <- getDistPkgs
   message env 1 $ "Write package list to " ++ fpkgs
-  writeFile fpkgs $ unlines $ map showPackage $ pkgs ++ distPkgs
+  writeFile fpkgs $ unlines $ map showPackage $ pkgs ++ dist
   writeFile (dir </> "ghc-version") ghcVersion
 cmdUpdate _ _ = usage
 
@@ -149,13 +150,17 @@ cmdUpdate _ _ = usage
 -- XXX What to do about versions?
 -- XXX more...
 -- Should get these from global-hints (?)
+-- https://raw.githubusercontent.com/commercialhaskell/stackage-content/master/stack/global-hints.yaml
+getDistPkgs :: IO [StackagePackage]
+getDistPkgs = return distPkgs
+
 distPkgs :: [StackagePackage]
 distPkgs =
   [ StackagePackage "containers"   (makeVersion [0,8])      False []
-  , StackagePackage "deepseq"      (makeVersion [1,5,0,0])  False []
+--  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
   , StackagePackage "mtl"          (makeVersion [2,3,1])    False []
-  , StackagePackage "time"         (makeVersion [1,12,2])   False []
-  , StackagePackage "transformers" (makeVersion [0,6,1,2])  False []
+  , StackagePackage "time"         (makeVersion [1,15])   False []
+  , StackagePackage "transformers" (makeVersion [0,6,2,0])  False []
   ]
 
 -----------------------------------------
