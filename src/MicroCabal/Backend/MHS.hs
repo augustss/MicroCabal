@@ -162,7 +162,7 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
       omdls = getFieldStrings flds [] "other-modules"
       vers = getVersion glob "version"
       namever = name ++ "-" ++ showVersion vers
-      pkgfn = namever ++ ".pkg"
+      pkgfn = distDir env ++ "/" ++ namever ++ ".pkg"
       args = unwords $ ["-P" ++ namever,
                         "-o" ++ pkgfn] ++
                        stdArgs ++
@@ -188,7 +188,7 @@ mhsInstallLib :: Env -> Section -> Section -> IO ()
 mhsInstallLib env (Section _ _ glob) (Section _ name _) = do
   initDB env
   let vers = getVersion glob "version"
-      namever = name ++ "-" ++ showVersion vers
+      namever = distDir env ++ "/" ++ name ++ "-" ++ showVersion vers
   mhs env $ "-Q " ++ namever ++ ".pkg"
 
 ---
