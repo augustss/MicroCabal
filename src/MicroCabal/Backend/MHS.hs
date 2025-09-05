@@ -68,7 +68,8 @@ builtinPackages = [
   ("hashable",  makeVersion [1,0,0,0]),    -- very rudimentary
   ("process",   makeVersion [1,6,18,0]),
   ("bytestring",makeVersion [0,12,1,0]),
-  ("text",      makeVersion [2,1,1])
+  ("text",      makeVersion [2,1,1]),
+  ("stm",       makeVersion [2,5,3,0])
   ]
 
 getPackageVersion :: Env -> String -> IO Version
