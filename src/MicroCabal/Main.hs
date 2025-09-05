@@ -18,10 +18,9 @@ import MicroCabal.Parse
 import MicroCabal.StackageList
 import MicroCabal.Unix
 --import MicroCabal.YAML
-import Debug.Trace
 
 version :: String
-version = "MicroCabal 0.5.1.0"
+version = "MicroCabal 0.5.2.0"
 
 main :: IO ()
 main = do
@@ -302,7 +301,7 @@ hackLocalLibs :: Env -> [Name] -> Version -> Section -> Section
 hackLocalLibs env locals vers (Section stype sname flds) =
   Section stype sname $ addLocals $ map removeLocals flds
   where removeLocals (Field "build-depends" (VPkgs ps)) =
-          Field "build-depends" $ VPkgs $ filter (\ (n, _, _) -> trace ("removeLocals " ++ show (n, locals)) $ n `notElem` locals) ps
+          Field "build-depends" $ VPkgs $ filter (\ (n, _, _) -> n `notElem` locals) ps
         removeLocals f = f
         addLocals fs =
           let mhso = "mhs-options"
