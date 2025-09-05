@@ -18,6 +18,7 @@ import MicroCabal.Parse
 import MicroCabal.StackageList
 import MicroCabal.Unix
 --import MicroCabal.YAML
+import Debug.Trace
 
 version :: String
 version = "MicroCabal 0.5.1.0"
@@ -269,41 +270,64 @@ build env = do
       info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
       ncbl@(Cabal sects) = normalize info cbl
       glob = getGlobal ncbl
-      sect s@(Section "executable"      _ _) | TgtExe `elem` targets env && isBuildable s = buildExe env glob s
-      sect s@(Section "library"         _ _) | TgtLib `elem` targets env && isBuildable s = buildLib env glob s
-      sect s@(Section "foreign-library" _ _) | TgtFor `elem` targets env && isBuildable s = buildForeignLib env glob s
-      sect _ = return ()
+      sectLib s@(Section "library"         _ _) | TgtLib `elem` targets env && isBuildable s = buildLib env glob s
+      sectLib s@(Section "foreign-library" _ _) | TgtFor `elem` targets env && isBuildable s = buildForeignLib env glob s
+      sectLib _ = return Nothing
+      sectExe ll s@(Section "executable"      _ _) | TgtExe `elem` targets env && isBuildable s = buildExe env glob s ll
+      sectExe _ _ = return ()
+      sects' = addMissing sects
   message env 3 $ "Unnormalized Cabal file:\n" ++ show cbl
   message env 2 $ "Normalized Cabal file:\n" ++ show ncbl
-  mapM_ sect $ addMissing sects
+  -- Build libs first, then exes
+  localLibs <- mapM sectLib sects'
+  mapM_ (sectExe $ catMaybes localLibs) sects'
 
 isBuildable :: Section -> Bool
 isBuildable (Section _ _ flds) = getFieldBool True flds "buildable"
 
-buildExe :: Env -> Section -> Section -> IO ()
-buildExe env glob sect@(Section _ name flds) = do
+buildExe :: Env -> Section -> Section -> [Name] -> IO ()
+buildExe env glob@(Section _ _ sglob) sect@(Section _ name flds) localLibs = do
   message env 0 $ "Building executable " ++ name
   createPathFile env glob sect
   let deps = getBuildDepends flds
-      pkgs = [ p | (p, _, _) <- deps ]
+      pkgs = [ p | (p, _, _) <- deps, p `notElem` localLibs ]
+      vers =  getVersion sglob "version"
+      sect' = hackLocalLibs env localLibs vers sect
   mapM_ (checkDep env) pkgs
-  buildPkgExe (backend env) env glob sect
+  buildPkgExe (backend env) env glob sect'
 
-buildLib :: Env -> Section -> Section -> IO ()
+-- Remove dependencies on locally built libraries and add them
+-- as preloads of the mhs-options.
+hackLocalLibs :: Env -> [Name] -> Version -> Section -> Section
+hackLocalLibs env locals vers (Section stype sname flds) =
+  Section stype sname $ addLocals $ map removeLocals flds
+  where removeLocals (Field "build-depends" (VPkgs ps)) =
+          Field "build-depends" $ VPkgs $ filter (\ (n, _, _) -> trace ("removeLocals " ++ show (n, locals)) $ n `notElem` locals) ps
+        removeLocals f = f
+        addLocals fs =
+          let mhso = "mhs-options"
+              mfs = getFieldStrings fs [] mhso
+              mfs' = VItems (map ("-p" ++) localFiles ++ mfs)
+          in  replField mhso mfs' fs
+        localFiles = map (\ n -> distDir env ++ "/" ++  n ++ "-" ++ showVersion vers ++ ".pkg") locals
+
+buildLib :: Env -> Section -> Section -> IO (Maybe Name)
 buildLib env glob sect@(Section _ name flds) = do
   message env 0 $ "Building library " ++ name
   createPathFile env glob sect
   let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
   buildPkgLib (backend env) env glob sect
+  return (Just name)
 
-buildForeignLib :: Env -> Section -> Section -> IO ()
+buildForeignLib :: Env -> Section -> Section -> IO (Maybe Name)
 buildForeignLib env glob sect@(Section _ name flds) = do
   message env 0 $ "Building foreign-library " ++ name
   createPathFile env glob sect
   let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
   buildPkgForLib (backend env) env glob sect
+  return (Just name)
 
 checkDep :: Env -> PackageName -> IO ()
 checkDep env pkg = do
