@@ -82,7 +82,6 @@ setupStdArgs env flds = do
       lang    = maybe [] (\ s -> ["-X" ++ s]) mlang
   buildDir <- getBuildDir env
   depvers <- mapM (getPackageVersion env) deps
-  let macros = genPkgVersionMacros (zip deps depvers)
   return $
     [ "-package-env=-",
       "-package-db=" ++ db,
@@ -95,7 +94,6 @@ setupStdArgs env flds = do
     lang ++
     map ("-package " ++) deps ++
     opts ++
-    macros ++
     cppOpts
 
 binGhc :: FilePath
