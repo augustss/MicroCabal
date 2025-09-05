@@ -133,15 +133,16 @@ cmdUpdate env [] = do
   url <- getBestStackage env
   wget env url stk
   file <- readFile stk
+  dist <- getDistPkgs
   let yml = parseYAML stk file
-      pkgs = yamlToStackageList yml
+      pkgs = map hackName $ yamlToStackageList yml ++ dist
       ghcVersion = yamlToGHCVersion yml
+      hackName s = s{ stName = patchName (backend env) (stName s) }
 --  putStrLn $ "==== " ++ ghcVersion
 --  putStrLn $ showYAML yml
 --  putStrLn $ show pkgs
-  dist <- getDistPkgs
   message env 1 $ "Write package list to " ++ fpkgs
-  writeFile fpkgs $ unlines $ map showPackage $ pkgs ++ dist
+  writeFile fpkgs $ unlines $ map showPackage pkgs
   writeFile (dir </> "ghc-version") ghcVersion
 cmdUpdate _ _ = usage
 
@@ -220,7 +221,8 @@ findCabalFile _env = do
 
 cmdBuild :: Env -> [String] -> IO ()
 cmdBuild env [] = build env
-cmdBuild env [pkg] = do
+cmdBuild env [apkg] = do
+  let pkg = patchName (backend env) apkg
   message env 0 $ "Build package " ++ pkg
   st <- getPackageInfo env pkg
   let dir = dirForPackage env st
@@ -267,7 +269,7 @@ build env = do
   let comp = backendNameVers (backend env)
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
-      ncbl@(Cabal sects) = normalize info cbl
+      ncbl@(Cabal sects) = normalizeAndPatch env info cbl
       glob = getGlobal ncbl
       sectLib s@(Section "library"         _ _) | TgtLib `elem` targets env && isBuildable s = buildLib env glob s
       sectLib s@(Section "foreign-library" _ _) | TgtFor `elem` targets env && isBuildable s = buildForeignLib env glob s
@@ -364,7 +366,7 @@ install env = do
   let comp = backendNameVers (backend env)
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
-      ncbl@(Cabal sects) = normalize info cbl
+      ncbl@(Cabal sects) = normalizeAndPatch env info cbl
       glob = getGlobal ncbl
       sect s@(Section "executable" _ _) | TgtExe `elem` targets env && isBuildable s = installExe env glob s
       sect s@(Section "library"    _ _) | TgtLib `elem` targets env && isBuildable s = installLib env glob s
@@ -477,3 +479,6 @@ cmdParse env [fn] = do
   putStrLn "Normalized:"
   putStrLn $ showCabal ncbl
 cmdParse _ _ = error "cmdParse"
+
+normalizeAndPatch :: Env -> FlagInfo -> Cabal -> Cabal
+normalizeAndPatch env flags = patchDepends (backend env) . normalize flags

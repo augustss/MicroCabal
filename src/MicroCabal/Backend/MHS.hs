@@ -10,6 +10,7 @@ import MicroCabal.Macros
 import MicroCabal.Parse(readVersion)
 import MicroCabal.Unix
 import System.Environment
+import Debug.Trace
 
 mhsBackend :: Env -> IO Backend
 mhsBackend env = do
@@ -24,6 +25,8 @@ mhsBackend env = do
     compiler = mhsVersion,
     compilerExe = exe,
     doesPkgExist = mhsExists,
+    patchDepends = mhsPatchDepends,
+    patchName = mhsPatchName,
     buildPkgExe = mhsBuildExe,
     buildPkgLib = mhsBuildLib,
     buildPkgForLib = mhsBuildForeignLib,
@@ -199,3 +202,21 @@ mhsInstallLib env (Section _ _ glob) (Section _ name _) = do
 -- XXX
 stripSuffix :: String -> String -> Maybe String
 stripSuffix suf str = reverse <$> stripPrefix (reverse suf) (reverse str)
+
+-- Update build-depends for packages that have a special mhs version
+mhsPatchDepends :: Cabal -> Cabal
+mhsPatchDepends (Cabal sects) = Cabal (map patchSect sects)
+  where
+    patchSect (Section styp sname flds) = Section styp sname (map patchField flds)
+    patchField (Field "build-depends" (VPkgs ds)) = Field "build-depends" (VPkgs (map patchDep ds))
+    patchField fld = fld
+    patchDep (pkg, xs, mv) = (mhsPatchName pkg, xs, mv)
+
+mhsPatchName :: Name -> Name
+mhsPatchName n | n `elem` mhsPackages =
+  trace ("Changing package " ++ n ++ " to " ++ n ++ "-mhs") $
+  n ++ "-mhs"
+mhsPatchName n = n
+
+mhsPackages :: [String]
+mhsPackages = ["mtl", "random"]
