@@ -110,17 +110,20 @@ binMhs :: String
 binMhs  = "bin" </> "mhs"
 
 mhsBuildExe :: Env -> Section -> Section -> IO ()
-mhsBuildExe env _ (Section _ name flds) = do
+mhsBuildExe env (Section _ _ gflds) (Section _ name flds) = do
   initDB env
   let mainIs  = getFieldString  flds         "main-is"
       srcDirs = getFieldStrings flds ["."]   "hs-source-dirs"
       bin     = distDir env </> binMhs </> name
+      gcs = getFieldStrings gflds [] "c-sources"
+      cs  = getFieldStrings  flds [] "c-sources"
+      csrc = gcs ++ cs
   mkdir env $ distDir env </> binMhs
   mainIs' <- findMainIs env srcDirs mainIs
   stdArgs <- setupStdArgs env flds
   let args    = unwords $ stdArgs ++
-                          ["-a."
-                          ,"-o" ++ bin, mainIs']
+                          csrc ++
+                          ["-a.","-o" ++ bin, mainIs']
   message env 0 $ "Build " ++ bin ++ " with mhs"
   mhs env args
 
