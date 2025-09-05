@@ -393,7 +393,7 @@ parsers =
   , "extra-ghci-libraries"           # pVComma
   , "extra-lib-dirs"                 # pVComma
   , "extra-lib-dirs-static"          # pVComma
-  , "extra-libraries"                # pVComma
+  , "extra-libraries"                # pVOptComma
   , "frameworks"                     # pVOptComma
   , "ghc-options"                    # pVSpace
   , "ghc-prof-options"               # pVSpace
