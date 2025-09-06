@@ -69,7 +69,12 @@ mkdir env d = cmd env $ "mkdir -p " ++ d
 
 -- Get a document, store it in a file.
 wget :: Env -> URL -> FilePath -> IO ()
-wget env (URL url) fn = cmd env $ "wget --quiet --output-document=" ++ fn ++ " " ++ url
+wget env (URL url) fn = do
+  mw <- lookupEnv "MICROCABAL_USE_WGET"
+  if isNothing mw then
+    cmd env $ "curl -s -o" ++ fn ++ " " ++ url
+   else
+    cmd env $ "wget --quiet --output-document=" ++ fn ++ " " ++ url
 
 -- Extract a tar file
 tarx :: Env -> FilePath -> FilePath -> IO ()
