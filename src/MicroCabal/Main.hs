@@ -20,7 +20,7 @@ import MicroCabal.Unix
 --import MicroCabal.YAML
 
 version :: String
-version = "MicroCabal 0.5.2.0"
+version = "MicroCabal 0.5.3.0"
 
 main :: IO ()
 main = do
@@ -445,9 +445,9 @@ cmdHelp _ _ = putStrLn "\
   \  mcabal [FLAGS] clean          clean in the current directory\n\
   \  mcabal [FLAGS] fetch PKG      fetch files for package PKG\n\
   \  mcabal [FLAGS] help           show this message\n\
-  \  mcabal [FLAGS] install        build and install in current directory\n\
+  \  mcabal [FLAGS] install [PKG]  build and install in current directory, or the package PKG\n\
   \  mcabal [FLAGS] parse FILE     just parse a Cabal file (for debugging)\n\
-  \  mcabal [FLAGS] update         retrieve new set of consistent packages\n\
+  \  mcabal [FLAGS] update         retrieve new set of consistent packages from Stackage\n\
   \\n\
   \Flags:\n\
   \  --version                     show version\n\
