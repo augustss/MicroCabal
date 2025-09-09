@@ -206,7 +206,8 @@ mhsInstallLib env (Section _ _ glob) (Section _ name _) = do
   initDB env
   let vers = getVersion glob "version"
       namever = distDir env ++ "/" ++ name ++ "-" ++ showVersion vers
-  mhs env $ "-Q " ++ namever ++ ".pkg"
+  mhsDir <- getMhsDir env
+  mhs env $ "-Q " ++ namever ++ ".pkg " ++ mhsDir
 
 ---
 -- XXX
