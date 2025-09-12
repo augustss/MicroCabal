@@ -64,7 +64,7 @@ mhsExists env pkgname = do
 -- The version numbers are from GHC 9.8.2
 builtinPackages :: [(String, Version)]
 builtinPackages = [
-  ("array",     makeVersion [0,5,6,0]),
+--  ("array",     makeVersion [0,5,6,0]),  has its own package
   ("base",      makeVersion [4,19,1,0]),
   ("deepseq",   makeVersion [1,5,0,0]),
   ("directory", makeVersion [1,3,8,1]),
@@ -127,7 +127,7 @@ mhsBuildExe env (Section _ _ gflds) (Section _ name flds) = do
   stdArgs <- setupStdArgs env flds
   let args    = unwords $ stdArgs ++
                           csrc ++
-                          ["-a.","-o" ++ bin, mainIs']
+                          ["-z", "-a.","-o" ++ bin, mainIs']
   message env 0 $ "Build " ++ bin ++ " with mhs"
   mhs env args
 
@@ -219,4 +219,4 @@ mhsPatchName n | n `elem` mhsPackages =
 mhsPatchName n = n
 
 mhsPackages :: [String]
-mhsPackages = ["mtl", "random"]
+mhsPackages = ["array", "mtl", "random"]
