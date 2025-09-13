@@ -31,7 +31,7 @@ data Backend = Backend {
   compilerExe    :: String,                                 -- name of binary
   doesPkgExist   :: Env -> PackageName        -> IO Bool,   -- is the package available in the database?
   patchDepends   :: Cabal -> Cabal,                         -- patch dependencies
-  patchName      :: Name -> Name,                           -- patch package name
+  patchName      :: (Name, Version) -> (Name, Version),     -- patch package name
   buildPkgExe    :: Env -> Section -> Section -> IO (),     -- build executable the current directory
   buildPkgLib    :: Env -> Section -> Section -> IO (),     -- build the package in the current directory
   buildPkgForLib :: Env -> Section -> Section -> IO (),     -- build the foreign-library in the current directory

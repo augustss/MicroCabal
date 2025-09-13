@@ -210,13 +210,20 @@ mhsPatchDepends (Cabal sects) = Cabal (map patchSect sects)
     patchSect (Section styp sname flds) = Section styp sname (map patchField flds)
     patchField (Field "build-depends" (VPkgs ds)) = Field "build-depends" (VPkgs (map patchDep ds))
     patchField fld = fld
-    patchDep (pkg, xs, mv) = (mhsPatchName pkg, xs, mv)
+    patchDep d@(pkg, xs, mv) | n /= pkg = (n, xs, Just (VEQ v))
+                             | otherwise = d
+      where (n, v) = mhsPatchName (pkg, undefined)
 
-mhsPatchName :: Name -> Name
-mhsPatchName n | n `elem` mhsPackages =
+
+mhsPatchName :: (Name, Version) -> (Name, Version)
+mhsPatchName (n, _) | Just nv <- lookup n mhsPackages =
   trace ("Changing package " ++ n ++ " to " ++ n ++ "-mhs") $
-  n ++ "-mhs"
-mhsPatchName n = n
+  nv
+mhsPatchName nv = nv
 
-mhsPackages :: [String]
-mhsPackages = ["array", "mtl", "random"]
+mhsPackages :: [(Name, (Name, Version))]
+mhsPackages =
+  [ ("array",  ("array-mhs",  makeVersion [0,5,8,0]))
+  , ("mtl",    ("mtl-mhs",    makeVersion [2,3,1]))
+  , ("random", ("random-mhs", makeVersion [1,3,1,1]))
+  ]

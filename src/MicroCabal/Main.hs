@@ -137,7 +137,7 @@ cmdUpdate env [] = do
   let yml = parseYAML stk file
       pkgs = map hackName $ yamlToStackageList yml ++ dist
       ghcVersion = yamlToGHCVersion yml
-      hackName s = s{ stName = patchName (backend env) (stName s) }
+      hackName s = s{ stName = n, stVersion = v } where (n, v) = patchName (backend env) (stName s, stVersion s)
 --  putStrLn $ "==== " ++ ghcVersion
 --  putStrLn $ showYAML yml
 --  putStrLn $ show pkgs
@@ -157,7 +157,8 @@ getDistPkgs = return distPkgs
 
 distPkgs :: [StackagePackage]
 distPkgs =
-  [ StackagePackage "containers"   (makeVersion [0,8])        False []
+  [ StackagePackage "array"        (makeVersion [0,5,8,0])    False []
+  , StackagePackage "containers"   (makeVersion [0,8])        False []
 --  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
   , StackagePackage "mtl"          (makeVersion [2,3,1])      False []
   , StackagePackage "pretty"       (makeVersion [1,1,3,6])    False []
@@ -223,7 +224,7 @@ findCabalFile _env = do
 cmdBuild :: Env -> [String] -> IO ()
 cmdBuild env [] = build env
 cmdBuild env [apkg] = do
-  let pkg = patchName (backend env) apkg
+  let pkg = fst $ patchName (backend env) (apkg, undefined)
   message env 0 $ "Build package " ++ pkg
   st <- getPackageInfo env pkg
   let dir = dirForPackage env st
@@ -241,7 +242,7 @@ getGlobal (Cabal sects) =
   fromMaybe (error "no global section") $ listToMaybe [ s | s@(Section "global" _ _) <- sects ]
 
 makeDataPrefix :: Env -> Section -> Section -> FilePath
-makeDataPrefix env (Section _ _ glob) (Section _ name _) = 
+makeDataPrefix env (Section _ _ glob) (Section _ name _) =
   let vers = getVersion glob "version"
       pkgVers = name ++ "-" ++ showVersion vers
       dataPrefix = cabalDir env </> compiler (backend env) </> "packages" </> pkgVers
