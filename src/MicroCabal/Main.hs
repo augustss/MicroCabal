@@ -160,6 +160,7 @@ distPkgs =
   [ StackagePackage "array"        (makeVersion [0,5,8,0])    False []
   , StackagePackage "containers"   (makeVersion [0,8])        False []
 --  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
+  , StackagePackage "ghc-compat"   (makeVersion [0,1,0,1])    False []
   , StackagePackage "mtl"          (makeVersion [2,3,1])      False []
   , StackagePackage "pretty"       (makeVersion [1,1,3,6])    False []
   , StackagePackage "time"         (makeVersion [1,15])       False []
