@@ -18,7 +18,8 @@ data Env = Env {
   recursive:: Bool,               -- do recursive builds, default is False
   eflags   :: [(String, Bool)],   -- Cabal flags
   backend  :: Backend,            -- which compiler to use, default is MHS
-  targets  :: [Target]            -- only build/install these
+  targets  :: [Target],           -- only build/install these
+  gitRepo  :: Maybe String        -- use git repo for package
   }
 
 data Target = TgtLib | TgtFor | TgtExe

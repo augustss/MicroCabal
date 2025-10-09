@@ -210,8 +210,8 @@ mhsPatchDepends (Cabal sects) = Cabal (map patchSect sects)
     patchSect (Section styp sname flds) = Section styp sname (map patchField flds)
     patchField (Field "build-depends" (VPkgs ds)) = Field "build-depends" (VPkgs (map patchDep ds))
     patchField fld = fld
-    patchDep d@(pkg, xs, mv) | n /= pkg = (n, xs, Just (VEQ v))
-                             | otherwise = d
+    patchDep d@(pkg, xs, _mv) | n /= pkg = (n, xs, Just (VEQ v))
+                              | otherwise = d
       where (n, v) = mhsPatchName (pkg, undefined)
 
 

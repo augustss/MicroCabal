@@ -2,6 +2,7 @@ module MicroCabal.Unix(
   cmd, tryCmd, cmdOut, tryCmdOut,
   mkdir,
   wget, URL(..),
+  gitClone,
   tarx,
   rmrf,
   cp, cpr,
@@ -93,7 +94,7 @@ cp env s d = do
 cpr :: Env -> FilePath -> FilePath -> IO ()
 cpr env s d = do
   cmd env $ "rm -f " ++ d
-  cp env s d  
+  cp env s d
 
 copyFiles :: Env -> FilePath -> [FilePath] -> FilePath -> IO ()
 copyFiles env src fns tgt = do
@@ -105,6 +106,10 @@ preserveCurrentDirectory io = do
   a <- io
   setCurrentDirectory cwd
   return a
+
+gitClone :: Env -> FilePath -> URL -> IO ()
+gitClone env dir (URL repo) = do
+  cmd env $ "git clone " ++ repo ++ " " ++ dir
 
 -----
 

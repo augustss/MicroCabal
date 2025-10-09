@@ -6,7 +6,7 @@ import Data.Version
 import System.Directory
 import MicroCabal.Cabal
 import MicroCabal.Env
-import MicroCabal.Macros
+--import MicroCabal.Macros
 import MicroCabal.Parse(readVersion)
 import MicroCabal.Unix
 import System.Environment
@@ -83,7 +83,7 @@ setupStdArgs env flds = do
       deps    = getBuildDependsPkg flds
       lang    = maybe [] (\ s -> ["-X" ++ s]) mlang
   buildDir <- getBuildDir env
-  depvers <- mapM (getPackageVersion env) deps
+  --depvers <- mapM (getPackageVersion env) deps
   return $
     [ "-package-env=-",
       "-package-db=" ++ db,

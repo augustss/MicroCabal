@@ -25,17 +25,16 @@ version = "MicroCabal 0.5.3.0"
 main :: IO ()
 main = do
   (env, args) <- decodeCommonArgs =<< setupEnv
-
   case args of
     [] -> usage
     ["--version"]  -> putStrLn version
-    "build"   : as -> cmdBuild   env as
-    "clean"   : as -> cmdClean   env as
-    "fetch"   : as -> cmdFetch   env as
-    "help"    : as -> cmdHelp    env as
-    "install" : as -> cmdInstall env as
-    "parse"   : as -> cmdParse   env as
-    "update"  : as -> cmdUpdate  env as
+    "build"   : as -> decodeGit cmdBuild   env as
+    "clean"   : as ->           cmdClean   env as
+    "fetch"   : as -> decodeGit cmdFetch   env as
+    "help"    : as ->           cmdHelp    env as
+    "install" : as -> decodeGit cmdInstall env as
+    "parse"   : as ->           cmdParse   env as
+    "update"  : as ->           cmdUpdate  env as
     _ -> usage
 
 setupEnv :: IO Env
@@ -44,7 +43,8 @@ setupEnv = do
   home <- getEnv "HOME"
   let cdir = fromMaybe (home </> ".mcabal") cdirm
       env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, eflags = [],
-                 backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtFor, TgtExe] }
+                 backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtFor, TgtExe],
+                 gitRepo = Nothing }
   be <- mhsBackend env
   return env{ backend = be }
 
@@ -206,10 +206,16 @@ cmdFetch env [pkg] = do
     message env 1 $ "Already in " ++ pdir
    else do
     mkdir env pdir
-    message env 1 $ "Fetching  " ++ pkgz
-    wget env url file
-    message env 1 $ "Unpacking " ++ pkgz ++ " in " ++ pdir
-    tarx env (dirPackage env) file
+    message env 1 $ "Fetching package " ++ pkgs
+    case gitRepo env of
+      Nothing -> do
+        message env 1 $ "Fetching from Hackage " ++ pkgz
+        wget env url file
+        message env 1 $ "Unpacking " ++ pkgz ++ " in " ++ pdir
+        tarx env (dirPackage env) file
+      Just repo -> do
+        message env 1 $ "Fetching from git repo " ++ pkg
+        gitClone env pdir (URL repo)
 cmdFetch _ _ = usage
 
 -----------------------------------------
@@ -353,6 +359,10 @@ addMissing sects = sects
 
 -----------------------------------------
 
+decodeGit :: (Env -> [String] -> IO ()) -> Env -> [String] -> IO ()
+decodeGit io env (arg:args) | repo@(Just _) <- stripPrefix "--git=" arg = io (env{ gitRepo = repo }) args
+decodeGit io env args = io env args
+
 cmdInstall :: Env -> [String] -> IO ()
 cmdInstall env args = do
   -- The will build and change current directory
@@ -443,13 +453,13 @@ installCFiles env glob@(Section _ _ gflds) sect@(Section _ _ flds) = do
 cmdHelp :: Env -> [String] -> IO ()
 cmdHelp _ _ = putStrLn "\
   \Available commands:\n\
-  \  mcabal [FLAGS] build [PKG]    build in current directory, or the package PKG\n\
-  \  mcabal [FLAGS] clean          clean in the current directory\n\
-  \  mcabal [FLAGS] fetch PKG      fetch files for package PKG\n\
-  \  mcabal [FLAGS] help           show this message\n\
-  \  mcabal [FLAGS] install [PKG]  build and install in current directory, or the package PKG\n\
-  \  mcabal [FLAGS] parse FILE     just parse a Cabal file (for debugging)\n\
-  \  mcabal [FLAGS] update         retrieve new set of consistent packages from Stackage\n\
+  \  mcabal [FLAGS] build [--git=URL] [PKG]    build in current directory, or the package PKG\n\
+  \  mcabal [FLAGS] clean                      clean in the current directory\n\
+  \  mcabal [FLAGS] fetch [--git=URL] PKG      fetch files for package PKG\n\
+  \  mcabal [FLAGS] help                       show this message\n\
+  \  mcabal [FLAGS] install [--git=URL] [PKG]  build and install in current directory, or the package PKG\n\
+  \  mcabal [FLAGS] parse FILE                 just parse a Cabal file (for debugging)\n\
+  \  mcabal [FLAGS] update                     retrieve new set of consistent packages from Stackage\n\
   \\n\
   \Flags:\n\
   \  --version                     show version\n\
@@ -459,6 +469,7 @@ cmdHelp _ _ = putStrLn "\
   \  -r                            do recursive installs for missing packages\n\
   \  --ghc                         compile using ghc\n\
   \  --mhs                         compile using mhs (default)\n\
+  \  --git=URL                     fetch from the Git repo instead of hackage\n\
   \\n\
   \Installs go to $CABALDIR if set, otherwise $HOME/.mcabal.\n\
   \"
