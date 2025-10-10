@@ -100,7 +100,7 @@ setupStdArgs env flds = do
       deps    = getBuildDependsPkg flds
       mhsX    = ["CPP"]
   depvers <- mapM (getPackageVersion env) deps
-  let macros = genPkgVersionMacros (zip deps depvers)
+  let macros = genPkgVersionMacros $ revPatchDepends $ zip deps depvers
   return $ ["-i"] ++
     map ("-i" ++) srcDirs ++
     ["-i" ++ pathModuleDir env] ++
@@ -227,3 +227,9 @@ mhsPackages =
   , ("mtl",    ("mtl-mhs",    makeVersion [2,3,1]))
   , ("random", ("random-mhs", makeVersion [1,3,2,1]))
   ]
+
+-- Temporary hack: undo dependency patching
+revPatchDepends :: [(String, Version)] -> [(String, Version)]
+revPatchDepends svs = [(rev s, v) | (s, v) <- svs]
+  where rev s = fromMaybe s $ lookup s revm
+        revm = [(r, n) | (n, (r, _)) <- mhsPackages]
