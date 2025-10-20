@@ -170,7 +170,11 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
       vers = getVersion glob "version"
       namever = name ++ "-" ++ showVersion vers
       pkgfn = distDir env ++ "/" ++ namever ++ ".pkg"
-      args = unwords $ ["-P" ++ namever,
+      cs  = getFieldStrings flds [] "c-sources"
+      ldf = getFieldStrings flds [] "extra-libraries"
+      args = unwords $ map ("-optc " ++) cs ++
+                       map ("-optl -l" ++) ldf ++
+                       ["-P" ++ namever,
                         "-o" ++ pkgfn] ++
                        stdArgs ++
                        ["-a."] ++
