@@ -413,7 +413,7 @@ parsers =
   , "other-extensions"               # pVOptComma
   , "other-languages"                # (VItem <$> pItem)
   , "other-modules"                  # pVOptComma
-  , "pkg-config-depends"             # pVComma
+  , "pkgconfig-depends"              # pVComma
   , "virtual-modules"                # pVComma
   --- library fields
   , "visibility"                     # (VItem <$> pItem)
