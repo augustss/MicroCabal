@@ -222,7 +222,7 @@ mhsPatchDepends cbl@(Cabal sects) = Cabal (map patchSect sects)
 mhsExtraPkgs :: Cabal -> [(Item, [Item], Maybe VersionRange)]
 mhsExtraPkgs cbl | forMhs (getCabalName cbl) = []
                  | otherwise = [ ("ghc-compat", [], Nothing) ]
-  where forMhs n = n `elem` ["ghc-compat", "MicroHs", "MicroCabal"]
+  where forMhs n = n `elem` ["base", "ghc-compat", "MicroHs", "MicroCabal"]
 
 mhsPatchName :: (Name, Version) -> (Name, Version)
 mhsPatchName (n, _) | Just nv <- lookup n mhsPackages =
