@@ -19,6 +19,8 @@ module MicroCabal.Cabal(
   getBuildDependsPkg,
   getVersion,
   replField,
+  getSection,
+  getCabalName,
   ) where
 import Data.Maybe
 import Data.Version
@@ -102,7 +104,15 @@ indent :: String -> String
 indent s = "  " ++ concatMap (\ c -> if c == '\n' then "\n  " else [c]) s
 
 showSection :: Section -> String
-showSection (Section s n fs) = unlines $ ("  " ++ s ++ " " ++ n) : map (indent . showField) fs 
+showSection (Section s n fs) = unlines $ ("  " ++ s ++ " " ++ n) : map (indent . showField) fs
+
+getCabalName :: Cabal -> Name
+getCabalName cbl =
+  let Section _ _ flds = getSection cbl "global"
+  in  getFieldString flds "name"
+
+getSection :: Cabal -> SectionType -> Section
+getSection (Cabal sects) ty = head $ [s | s@(Section t _ _) <- sects, t == ty] ++ [error ("no section: " ++ show ty)]
 
 getFieldBool :: Bool -> [Field] -> FieldName -> Bool
 getFieldBool dflt flds name =

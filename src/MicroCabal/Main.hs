@@ -163,7 +163,7 @@ distPkgs =
 --  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
   , StackagePackage "exceptions"   (makeVersion [0,10,9])     False []
   , StackagePackage "filepath"     (makeVersion [1,5,4,0])    False []
-  , StackagePackage "ghc-compat"   (makeVersion [0,2,0,0])    False []
+  , StackagePackage "ghc-compat"   (makeVersion [0,3,0,0])    False []
   , StackagePackage "mtl"          (makeVersion [2,3,1])      False []
   , StackagePackage "os-string"    (makeVersion [2,0,7])      False []
   , StackagePackage "parsec"       (makeVersion [3,1,18,0])   False []
@@ -493,7 +493,7 @@ cmdParse env [fn] = do
   let comp = backendNameVers (backend env)
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
-      ncbl = normalize info cbl
+      ncbl = normalizeAndPatch env info cbl
   putStrLn "Unnormalized:"
   putStrLn $ showCabal cbl
   putStrLn "Normalized:"
