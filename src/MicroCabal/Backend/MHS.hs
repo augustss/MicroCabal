@@ -194,8 +194,8 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
     (fn, h) <- tmpFile
     hPutStr h $ unlines $ map ("import " ++) mdls ++ ["main = return ()"]
     hFlush h >> hClose h
-    mhs env $ unwords $ stdArgs ++ cargs ++ ["-p" ++ pkgfn, "-r", fn]
-    removeFile fn
+    mhs env $ unwords $ stdArgs ++ cargs ++ ["-p" ++ pkgfn, "-o" ++ fn ++ ".bin", fn]
+    mapM_ removeFile [fn ++ ".bin", fn]
 
 mhsInstallExe :: Env -> Section -> Section -> IO ()
 mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do
