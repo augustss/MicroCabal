@@ -97,6 +97,7 @@ setupStdArgs env flds = do
       opts    = getFieldStrings flds []      "mhs-options"
       cppOpts = getFieldStrings flds []      "cpp-options"
       incs    = getFieldStrings flds []      "include-dirs"
+      lopts   = getFieldStrings flds []      "extra-libraries"
       exts'   = filter (`elem` mhsX) (exts ++ oexts)
       deps    = getBuildDependsPkg flds
       mhsX    = ["CPP"]
@@ -108,6 +109,7 @@ setupStdArgs env flds = do
     map ("-X" ++) exts' ++
     map ("-I" ++) incs ++
     opts ++
+    map ("-optl -l" ++) lopts ++
     macros ++
     cppOpts
 
@@ -174,8 +176,7 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
       cs  = getFieldStrings flds [] "c-sources"
       ldf = getFieldStrings flds [] "extra-libraries"
       cargs = map ("-optc " ++) cs
-      pargs = map ("-optl -l" ++) ldf ++
-              ["-P" ++ namever,
+      pargs = ["-P" ++ namever,
                "-o" ++ pkgfn,
                "-a."]
       isMdl (' ':_) = True   -- Relies on -L output format
@@ -193,7 +194,7 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
     (fn, h) <- tmpFile
     hPutStr h $ unlines $ map ("import " ++) mdls ++ ["main = return ()"]
     hFlush h >> hClose h
-    mhs env $ unwords $ cargs ++ ["-p" ++ pkgfn, "-r", fn]
+    mhs env $ unwords $ stdArgs ++ cargs ++ ["-p" ++ pkgfn, "-r", fn]
     removeFile fn
 
 mhsInstallExe :: Env -> Section -> Section -> IO ()
