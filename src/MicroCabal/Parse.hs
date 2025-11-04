@@ -455,7 +455,7 @@ parsers =
   , "default"                        # (VBool <$> pBool)
   , "tag"                            # pFreeText
   ]
-  where (#) = (,)
+  where ( # ) = (,)
   -- XXX use local fixity
 
 

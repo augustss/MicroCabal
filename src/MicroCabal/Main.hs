@@ -44,7 +44,7 @@ setupEnv = do
   let cdir = fromMaybe (home </> ".mcabal") cdirm
       env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, eflags = [],
                  backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtFor, TgtExe],
-                 gitRepo = Nothing }
+                 gitRepo = Nothing, dryRun = False }
   be <- mhsBackend env
   return env{ backend = be }
 
@@ -56,6 +56,7 @@ decodeCommonArgs env = do
       loop e (('-':'f':s) : as) = loop e{ eflags = decodeCabalFlags s } as
       loop e ("--ghc"     : as) = do be <- ghcBackend env; loop e{ backend = be } as
       loop e ("--mhs"     : as) = do be <- mhsBackend env; loop e{ backend = be } as
+      loop e ("--dry-run" : as) = loop e{ dryRun = True } as
       loop e as = return (e, as)
   loop env =<< getArgs
 
@@ -162,7 +163,7 @@ distPkgs =
 --  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
   , StackagePackage "exceptions"   (makeVersion [0,10,9])     False []
   , StackagePackage "filepath"     (makeVersion [1,5,4,0])    False []
-  , StackagePackage "ghc-compat"   (makeVersion [0,1,0,1])    False []
+  , StackagePackage "ghc-compat"   (makeVersion [0,3,0,0])    False []
   , StackagePackage "mtl"          (makeVersion [2,3,1])      False []
   , StackagePackage "os-string"    (makeVersion [2,0,7])      False []
   , StackagePackage "parsec"       (makeVersion [3,1,18,0])   False []
@@ -474,6 +475,7 @@ cmdHelp _ _ = putStrLn "\
   \  --ghc                         compile using ghc\n\
   \  --mhs                         compile using mhs (default)\n\
   \  --git=URL                     fetch from the Git repo instead of hackage\n\
+  \  --dry-run                     do NOT execute the commands, just print\n\
   \\n\
   \Installs go to $CABALDIR if set, otherwise $HOME/.mcabal.\n\
   \"
@@ -491,7 +493,7 @@ cmdParse env [fn] = do
   let comp = backendNameVers (backend env)
   let cbl = parseCabal fn rfile
       info = FlagInfo { os = I.os, arch = I.arch, flags = eflags env, impl = comp }
-      ncbl = normalize info cbl
+      ncbl = normalizeAndPatch env info cbl
   putStrLn "Unnormalized:"
   putStrLn $ showCabal cbl
   putStrLn "Normalized:"

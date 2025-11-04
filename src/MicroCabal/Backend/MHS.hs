@@ -216,17 +216,22 @@ mhsInstallLib env (Section _ _ glob) (Section _ name _) = do
 stripSuffix :: String -> String -> Maybe String
 stripSuffix suf str = reverse <$> stripPrefix (reverse suf) (reverse str)
 
--- Update build-depends for packages that have a special mhs version
+-- Update build-depends for packages that have a special mhs version, also add ghc-compat.
 mhsPatchDepends :: Cabal -> Cabal
-mhsPatchDepends (Cabal sects) = Cabal (map patchSect sects)
+mhsPatchDepends cbl@(Cabal sects) = Cabal (map patchSect sects)
   where
     patchSect (Section styp sname flds) = Section styp sname (map patchField flds)
-    patchField (Field "build-depends" (VPkgs ds)) = Field "build-depends" (VPkgs (map patchDep ds))
+    patchField (Field "build-depends" (VPkgs ds)) = Field "build-depends" (VPkgs (mhsExtraPkgs cbl ++ map patchDep ds))
     patchField fld = fld
     patchDep d@(pkg, xs, _mv) | n /= pkg = (n, xs, Just (VEQ v))
                               | otherwise = d
       where (n, v) = mhsPatchName (pkg, undefined)
 
+-- Add a dependency on ghc-compat
+mhsExtraPkgs :: Cabal -> [(Item, [Item], Maybe VersionRange)]
+mhsExtraPkgs cbl | forMhs (getCabalName cbl) = []
+                 | otherwise = [ ("ghc-compat", [], Nothing) ]
+  where forMhs n = n `elem` ["base", "ghc-compat", "MicroHs", "MicroCabal"]
 
 mhsPatchName :: (Name, Version) -> (Name, Version)
 mhsPatchName (n, _) | Just nv <- lookup n mhsPackages =

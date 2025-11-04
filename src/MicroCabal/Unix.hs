@@ -12,6 +12,7 @@ module MicroCabal.Unix(
   (</>),
   ) where
 import Control.Exception
+import Control.Monad
 import Data.Maybe
 import System.Directory
 import System.Environment
@@ -24,7 +25,10 @@ newtype URL = URL String
 cmd :: Env -> String -> IO ()
 cmd env s = do
   message env 2 $ "cmd: " ++ s
-  callCommand s
+  if dryRun env then
+    putStrLn s
+   else
+    callCommand s
 
 tryCmd :: Env -> String -> IO Bool
 tryCmd env s = catch (cmd env s >> return True) f
