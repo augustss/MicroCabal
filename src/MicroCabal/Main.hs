@@ -163,7 +163,7 @@ distPkgs =
 --  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
   , StackagePackage "exceptions"   (makeVersion [0,10,9])     False []
   , StackagePackage "filepath"     (makeVersion [1,5,4,0])    False []
-  , StackagePackage "ghc-compat"   (makeVersion [0,4,0,0])    False []
+  , StackagePackage "ghc-compat"   (makeVersion [0,5,0,0])    False []
   , StackagePackage "mtl"          (makeVersion [2,3,1])      False []
   , StackagePackage "os-string"    (makeVersion [2,0,7])      False []
   , StackagePackage "parsec"       (makeVersion [3,1,18,0])   False []
@@ -353,6 +353,7 @@ checkDep env pkg = do
       let env' = env { depth = depth env + 1 }
       preserveCurrentDirectory $
         cmdInstallLib env' [pkg]
+      message env 0 "Return to building target"
     else
       error $ "dependency not installed: " ++ pkg
 
