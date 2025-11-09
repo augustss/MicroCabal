@@ -5,6 +5,7 @@ module MicroCabal.Unix(
   gitClone,
   tarx,
   rmrf,
+  tmpFile,
   cp, cpr,
   copyFiles,
   preserveCurrentDirectory,
