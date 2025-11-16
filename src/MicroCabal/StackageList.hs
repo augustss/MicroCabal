@@ -7,6 +7,7 @@ module MicroCabal.StackageList(
   yamlToStackageList,
   yamlToGHCVersion,
   readVersionM,
+  readVersion,
   ) where
 import Data.Maybe
 import Data.Version
@@ -41,7 +42,7 @@ yamlToStackageList :: YAMLValue -> [StackagePackage]
 yamlToStackageList (YRecord flds) =
   let lookf s = fromMaybe (error $ "yamlToStackageList: no " ++ s) $ lookup s flds
   in  case (lookf "flags", lookf "hidden", lookf "packages") of
-        (YRecord flags, YRecord hidden, YArray packages) -> 
+        (YRecord flags, YRecord hidden, YArray packages) ->
           map (addFlags flags . addHidden hidden . decodePackage) packages
         _ -> error "Unrecognized Stackage package list format"
 yamlToStackageList _ = error "Unrecognized Stackage package list format"

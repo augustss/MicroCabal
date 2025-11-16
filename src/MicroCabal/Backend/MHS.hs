@@ -7,7 +7,7 @@ import System.Directory
 import MicroCabal.Cabal
 import MicroCabal.Env
 import MicroCabal.Macros
-import MicroCabal.Parse(readVersion)
+import MicroCabal.StackageList(readVersionM, readVersion)
 import MicroCabal.Unix
 import System.Environment
 import Debug.Trace
@@ -81,10 +81,14 @@ getPackageVersion env pkgName = do
   dir <- getMhsDir env
   pkgs <- listDirectory (dir </> "packages")
   let n = pkgName ++ "-"
-  case [ readVersion vers | p <- pkgs, Just verspkg <- [stripPrefix n p], Just vers <- [stripSuffix ".pkg" verspkg] ] of
-    [v] -> return v
+  case [ v | p <- pkgs,
+             Just verspkg <- [stripPrefix n p],
+             Just vers <- [stripSuffix ".pkg" verspkg],
+             Just v <- [readVersionM vers]
+       ] of
     []  -> error $ "Not installed: " ++ pkgName
-    _   -> error $ "Multiple version: " ++ pkgName
+    [v] -> return v
+    vs  -> error $ "Multiple version: " ++ pkgName ++ show vs
 
 setupStdArgs :: Env -> [Field] -> IO [String]
 setupStdArgs env flds = do

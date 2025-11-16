@@ -2,7 +2,6 @@ module MicroCabal.Parse(
   parseCabal,
   parseYAML,
   parseSnapshots,
-  readVersion,
   ) where
 import Control.Applicative
 import Control.Monad
@@ -523,8 +522,3 @@ pSnapshots = pWhite *> pChar '{' *> (esepBy pSnapshot (pWhite *> pChar ',')) <* 
 
 pSnapshot :: P Snapshot
 pSnapshot = (,) <$> (pWhite *> pString) <*> (pWhite *> pChar ':' *> pWhite *> pString)
-
-----------------------------------------------------------------------
-
-readVersion :: String -> Version
-readVersion = makeVersion . map read . words . map (\ c -> if c == '.' then ' ' else c)

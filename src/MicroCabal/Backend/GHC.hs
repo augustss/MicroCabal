@@ -7,7 +7,7 @@ import System.Directory
 import MicroCabal.Cabal
 import MicroCabal.Env
 --import MicroCabal.Macros
-import MicroCabal.Parse(readVersion)
+import MicroCabal.StackageList(readVersion)
 import MicroCabal.Unix
 import System.Environment
 
