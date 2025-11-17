@@ -4,6 +4,7 @@ import Data.List(dropWhileEnd, (\\), stripPrefix)
 import Data.Maybe
 import Data.Version
 import System.Directory
+import System.IO
 import MicroCabal.Cabal
 import MicroCabal.Env
 import MicroCabal.Macros
@@ -100,6 +101,7 @@ setupStdArgs env flds = do
       opts    = getFieldStrings flds []      "mhs-options"
       cppOpts = getFieldStrings flds []      "cpp-options"
       incs    = getFieldStrings flds []      "include-dirs"
+      lopts   = getFieldStrings flds []      "extra-libraries"
       exts'   = filter (`elem` mhsX) (exts ++ oexts)
       deps    = getBuildDependsPkg flds
       mhsX    = ["CPP"]
@@ -111,6 +113,7 @@ setupStdArgs env flds = do
     map ("-X" ++) exts' ++
     map ("-I" ++) incs ++
     opts ++
+    map ("-optl -l" ++) lopts ++
     macros ++
     cppOpts
 
@@ -176,21 +179,27 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
       pkgfn = distDir env ++ "/" ++ namever ++ ".pkg"
       cs  = getFieldStrings flds [] "c-sources"
       ldf = getFieldStrings flds [] "extra-libraries"
-      args = unwords $ map ("-optc " ++) cs ++
-                       map ("-optl -l" ++) ldf ++
-                       ["-P" ++ namever,
-                        "-o" ++ pkgfn] ++
-                       stdArgs ++
-                       ["-a."] ++
-                       mdls
+      cargs = map ("-optc " ++) cs
+      pargs = ["-P" ++ namever,
+               "-o" ++ pkgfn,
+               "-a."]
       isMdl (' ':_) = True   -- Relies on -L output format
       isMdl _ = False
-  mhs env args
+  mhs env $ unwords (stdArgs ++ cargs ++ pargs ++ mdls)
   pkgmdls <- words . unlines . filter isMdl . lines <$> mhsOut env ("-L" ++ pkgfn)
   let bad = pkgmdls \\ (mdls ++ omdls)
   when (not (null bad)) $ do
     message env (-1) "Warning: package modules not mentioned in exposed-modules nor other-modules"
     mapM_ (message env (-1)) bad
+  unless (null cs && null ldf) $ do
+    -- we are linking to some c lib so we test if the package compiles
+    when (verbose env > 0) $
+      putStrLn $ "Testing the library " ++ namever
+    (fn, h) <- tmpFile
+    hPutStr h $ unlines $ map ("import " ++) mdls ++ ["main = return ()"]
+    hFlush h >> hClose h
+    mhs env $ unwords $ stdArgs ++ cargs ++ ["-p" ++ pkgfn, "-o" ++ fn ++ ".bin", fn]
+    mapM_ removeFile [fn ++ ".bin", fn]
 
 mhsInstallExe :: Env -> Section -> Section -> IO ()
 mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do
