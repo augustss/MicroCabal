@@ -169,7 +169,7 @@ mhsBuildLib :: Env -> Section -> Section -> IO ()
 mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
   stdArgs <- setupStdArgs env flds
-  let mdls = getFieldStrings flds (error "no exposed-modules") "exposed-modules"
+  let mdls = getFieldStrings flds [] "exposed-modules"
       omdls = getFieldStrings flds [] "other-modules"
       vers = getVersion glob "version"
       namever = name ++ "-" ++ showVersion vers
@@ -185,6 +185,8 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
                        mdls
       isMdl (' ':_) = True   -- Relies on -L output format
       isMdl _ = False
+  when (null mdls) $
+    message env (-1) "Warning: exposed-modules is empty"  
   mhs env args
   pkgmdls <- words . unlines . filter isMdl . lines <$> mhsOut env ("-L" ++ pkgfn)
   let bad = pkgmdls \\ (mdls ++ omdls)
