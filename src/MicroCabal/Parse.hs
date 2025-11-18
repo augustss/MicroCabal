@@ -407,6 +407,7 @@ parsers =
   , "install-includes"               # pVOptComma
   , "js-sources"                     # pVComma
   , "ld-options"                     # pVSpace
+  , "mhs-options"                    # pVSpace
   , "mixins"                         # pFreeText -- XXX
   , "nhc98-options"                  # pVSpace
   , "other-extensions"               # pVOptComma
