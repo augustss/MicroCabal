@@ -1,4 +1,5 @@
 module MicroCabal.Normalize(normalize) where
+import Data.Char(toLower)
 import Data.Function
 import Data.List
 import Data.Maybe
@@ -50,7 +51,7 @@ libName (Cabal (g@(Section _ _ gs):ss)) = Cabal $ g : map set ss
 reduce :: FlagInfo -> Cabal -> Cabal
 reduce info c = reduce' (addFlags c) c
   where addFlags (Cabal ss) = info{ flags = flags info ++ concatMap sect ss }
-        sect (Section "flag" n fs) = [(n, dflt n fs)]
+        sect (Section "flag" n fs) = [(n', dflt n' fs)]  where n' = map toLower n
         sect _ = []
         dflt n fs = head $ [ b | Field "default" (VBool b) <- fs ] ++ [error $ "no default for flag " ++ show n]
 
@@ -74,7 +75,7 @@ cond info = eval
         eval (Cnot a)   = not (eval a)
         eval (Cos s)    = os info == s
         eval (Carch s)  = arch info == s
-        eval (Cflag n)  = fromMaybe (error $ "Undefined flag " ++ show n) $ lookup n (flags info)
+        eval (Cflag n)  = fromMaybe (error $ "Undefined flag " ++ show n) $ lookup (map toLower n) (flags info)
         eval (Cimpl s mv) = n == s && maybe True (inVersionRange v) mv  where (n, v) = impl info
 
 inVersionRange :: Version -> VersionRange -> Bool
