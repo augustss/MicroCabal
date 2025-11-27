@@ -7,7 +7,7 @@ import System.Environment
 import System.Exit
 import System.Directory
 import qualified System.Info as I
---import Text.Read
+import Text.Read
 import MicroCabal.Backend.GHC
 import MicroCabal.Backend.MHS
 import MicroCabal.Cabal
@@ -20,7 +20,7 @@ import MicroCabal.Unix
 --import MicroCabal.YAML
 
 version :: String
-version = "MicroCabal 0.5.3.0"
+version = "MicroCabal 0.5.4.0"
 
 main :: IO ()
 main = do
@@ -44,19 +44,21 @@ setupEnv = do
   let cdir = fromMaybe (home </> ".mcabal") cdirm
       env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, eflags = [],
                  backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtFor, TgtExe],
-                 gitRepo = Nothing, dryRun = False }
+                 gitRepo = Nothing, dryRun = False, useNightly = True }
   be <- mhsBackend env
   return env{ backend = be }
 
 decodeCommonArgs :: Env -> IO (Env, [String])
 decodeCommonArgs env = do
-  let loop e ("-v"        : as) = loop e{ verbose = verbose e + 1 } as
-      loop e ("-q"        : as) = loop e{ verbose = -1 } as
-      loop e ("-r"        : as) = loop e{ recursive = True } as
-      loop e (('-':'f':s) : as) = loop e{ eflags = decodeCabalFlags s } as
-      loop e ("--ghc"     : as) = do be <- ghcBackend env; loop e{ backend = be } as
-      loop e ("--mhs"     : as) = do be <- mhsBackend env; loop e{ backend = be } as
-      loop e ("--dry-run" : as) = loop e{ dryRun = True } as
+  let loop e ("-v"           : as) = loop e{ verbose = verbose e + 1 } as
+      loop e ("-q"           : as) = loop e{ verbose = -1 } as
+      loop e ("-r"           : as) = loop e{ recursive = True } as
+      loop e (('-':'f':s)    : as) = loop e{ eflags = decodeCabalFlags s } as
+      loop e ("--ghc"        : as) = do be <- ghcBackend env; loop e{ backend = be } as
+      loop e ("--mhs"        : as) = do be <- mhsBackend env; loop e{ backend = be } as
+      loop e ("--dry-run"    : as) = loop e{ dryRun = True } as
+      loop e ("--nightly"    : as) = loop e{ useNightly = True } as
+      loop e ("--no-nightly" : as) = loop e{ useNightly = False } as
       loop e as = return (e, as)
   loop env =<< getArgs
 
@@ -106,20 +108,21 @@ getBestStackage env = do
   wget env stackageSourceList fsnaps
   file <- readFile fsnaps
   let snaps = parseSnapshots fsnaps file
-{-
-      -- Pick LTS snapshot
-      snap = snd $ last $
-             [(0::Int, error "no lts snapshots found")] ++
-             sort [ (l, r) | (lp, r) <- snaps, Just l <- [stripPrefix "lts-" lp >>= readMaybe] ]
-      snap' = map (\ c -> if c == '-' || c == '.' then '/' else c) snap
-      snapURL = URL $ snapshotSource ++ snap' ++ ".yaml"
--}
-      -- Pick a nightly snapshot
-      snap = fromMaybe (error "no nightly snapshot found") $ lookup nightlyName snaps
-      snap' = fixLeading0 $ map (\ c -> if c == '-' then '/' else c) snap
-      fixLeading0 ('/':'0':cs) = '/' : fixLeading0 cs
-      fixLeading0 (c:cs) = c : fixLeading0 cs
-      fixLeading0 cs = cs
+      (snap, snap') =
+        if useNightly env then
+          -- Pick nightly snapshot
+          let snap = fromMaybe (error "no nightly snapshot found") $ lookup nightlyName snaps
+              fixLeading0 ('/':'0':cs) = '/' : fixLeading0 cs
+              fixLeading0 (c:cs) = c : fixLeading0 cs
+              fixLeading0 cs = cs
+          in  (snap, fixLeading0 $ map (\ c -> if c == '-' then '/' else c) snap)
+        else
+          -- Pick LTS snapshot
+          let snap = snd $ last $
+                     [(0::Int, error "no lts snapshots found")] ++
+                     sort [ (l, r) | (lp, r) <- snaps, Just l <- [stripPrefix "lts-" lp >>= readMaybe] ]
+          in  (snap, map (\ c -> if c == '-' || c == '.' then '/' else c) snap)
+
       snapURL = URL $ snapshotSource ++ snap' ++ ".yaml"
   message env 1 $ "Picking Stackage snapshot " ++ snap
   return $ snapURL

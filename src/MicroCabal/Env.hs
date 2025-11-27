@@ -11,16 +11,17 @@ import MicroCabal.Cabal
 import MicroCabal.StackageList(PackageName)
 
 data Env = Env {
-  cabalDir :: FilePath,           -- where to install, default is $HOME/.mcabal
-  distDir  :: FilePath,           -- where to build, default is dist-mcabal
-  verbose  :: Int,                -- how chatty, default is 0, -1=say nothing, 0=minimal messages, 1=debug info
-  depth    :: Int,                -- nesting depth for recursive builds, default is 0
-  recursive:: Bool,               -- do recursive builds, default is False
-  dryRun   :: Bool,               -- don't execute commands
-  eflags   :: [(String, Bool)],   -- Cabal flags
-  backend  :: Backend,            -- which compiler to use, default is MHS
-  targets  :: [Target],           -- only build/install these
-  gitRepo  :: Maybe String        -- use git repo for package
+  cabalDir   :: FilePath,           -- where to install, default is $HOME/.mcabal
+  distDir    :: FilePath,           -- where to build, default is dist-mcabal
+  verbose    :: Int,                -- how chatty, default is 0, -1=say nothing, 0=minimal messages, 1=debug info
+  depth      :: Int,                -- nesting depth for recursive builds, default is 0
+  recursive  :: Bool,               -- do recursive builds, default is False
+  dryRun     :: Bool,               -- don't execute commands
+  useNightly :: Bool,               -- use nightly snapshot instead of latest LTS version
+  eflags     :: [(String, Bool)],   -- Cabal flags
+  backend    :: Backend,            -- which compiler to use, default is MHS
+  targets    :: [Target],           -- only build/install these
+  gitRepo    :: Maybe String        -- use git repo for package
   }
 
 data Target = TgtLib | TgtFor | TgtExe

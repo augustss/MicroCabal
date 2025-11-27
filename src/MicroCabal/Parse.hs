@@ -344,6 +344,10 @@ pName = pSpaces *> pIdent
 pFields :: P [Field]
 pFields = pSpaces *> pNewLine *> emany pField
 
+-- Skip initial NL
+pBoolNL :: P Bool
+pBoolNL = many pNewLine *> pBool
+
 pBool :: P Bool
 pBool = (False <$ pKeyWordNC "false") <|< (True <$ pKeyWordNC "true")
 
@@ -374,7 +378,7 @@ parsers =
   , "build-depends"                  # pVLibs
   , "build-tool-depends"             # pVLibs  -- ??? pVComma -- XXX
   , "build-tools"                    # pVLibs -- XXX
-  , "buildable"                      # (VBool <$> pBool)
+  , "buildable"                      # (VBool <$> pBoolNL)
   , "c-sources"                      # pVOptComma
   , "cc-options"                     # pVOptComma
   , "cmm-sources"                    # pVOptComma
@@ -450,8 +454,8 @@ parsers =
   -- source-repository fields
   , "location"                       # pFreeText
   -- flag fields
-  , "manual"                         # (VBool <$> pBool)
-  , "default"                        # (VBool <$> pBool)
+  , "manual"                         # (VBool <$> pBoolNL)
+  , "default"                        # (VBool <$> pBoolNL)
   , "tag"                            # pFreeText
   ]
   where ( # ) = (,)
