@@ -389,6 +389,7 @@ parsers =
   , "default-language"               # (VItem <$> pItem)
   , "exposed-modules"                # pVOptComma
   , "reexported-modules"             # pVOptComma
+  , "exposed"                        # (VBool <$> pBoolNL)
   , "extensions"                     # pVOptComma
   , "extra-bundled-libraries"        # pVComma
   , "extra-dynamic-library-flavours" # pVComma
