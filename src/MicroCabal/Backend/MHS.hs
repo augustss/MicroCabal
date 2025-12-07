@@ -239,7 +239,6 @@ mhsPatchName nv = nv
 mhsPackages :: [(Name, (Name, Version))]
 mhsPackages =
   [ ("array",  ("array-mhs",  makeVersion [0,5,8,0]))
-  , ("mtl",    ("mtl-mhs",    makeVersion [2,3,1]))
   , ("random", ("random-mhs", makeVersion [1,3,2,1]))
   ]
 
