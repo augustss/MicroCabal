@@ -45,7 +45,7 @@ setupEnv = do
   let cdir = fromMaybe (home </> ".mcabal") cdirm
       env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, eflags = [],
                  backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtFor, TgtExe],
-                 gitRepo = Nothing, dryRun = False, useNightly = True }
+                 gitRepo = Nothing, dryRun = False, useNightly = True, subDir = Nothing }
   be <- mhsBackend env
   return env{ backend = be }
 
