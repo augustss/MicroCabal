@@ -19,8 +19,9 @@ import MicroCabal.StackageList
 import MicroCabal.Unix
 --import MicroCabal.YAML
 
+-- Update cabal file when this changes
 version :: String
-version = "MicroCabal 0.5.5.0"
+version = "MicroCabal 0.5.6.0"
 
 main :: IO ()
 main = do
@@ -248,7 +249,8 @@ cmdBuild env [apkg] = do
     message env 0 $ "Package not found, running 'fetch " ++ pkg ++ "'"
     cmdFetch env [pkg]
   message env 0 $ "Building in " ++ dir
-  setCurrentDirectory dir
+  let dir' = maybe dir (dir </>) (subDir env)
+  setCurrentDirectory dir'
   cmdBuild env []
 cmdBuild _ _ = usage
 
@@ -369,7 +371,8 @@ addMissing sects = sects
 -----------------------------------------
 
 decodeGit :: (Env -> [String] -> IO ()) -> Env -> [String] -> IO ()
-decodeGit io env (arg:args) | repo@(Just _) <- stripPrefix "--git=" arg = io (env{ gitRepo = repo }) args
+decodeGit io env (arg:args) | repo@(Just _) <- stripPrefix "--git=" arg = decodeGit io (env{ gitRepo = repo }) args
+decodeGit io env (arg:args) |  dir@(Just _) <- stripPrefix "--dir=" arg = decodeGit io (env{ subDir  = dir  }) args
 decodeGit io env args = io env args
 
 cmdInstall :: Env -> [String] -> IO ()
@@ -462,13 +465,13 @@ installCFiles env glob@(Section _ _ gflds) sect@(Section _ _ flds) = do
 cmdHelp :: Env -> [String] -> IO ()
 cmdHelp _ _ = putStrLn "\
   \Available commands:\n\
-  \  mcabal [FLAGS] build [--git=URL] [PKG]    build in current directory, or the package PKG\n\
-  \  mcabal [FLAGS] clean                      clean in the current directory\n\
-  \  mcabal [FLAGS] fetch [--git=URL] PKG      fetch files for package PKG\n\
-  \  mcabal [FLAGS] help                       show this message\n\
-  \  mcabal [FLAGS] install [--git=URL] [PKG]  build and install in current directory, or the package PKG\n\
-  \  mcabal [FLAGS] parse FILE                 just parse a Cabal file (for debugging)\n\
-  \  mcabal [FLAGS] update                     retrieve new set of consistent packages from Stackage\n\
+  \  mcabal [FLAGS] build [--git=URL [--dir=DIR]] [PKG]    build in current directory, or the package PKG\n\
+  \  mcabal [FLAGS] clean                                  clean in the current directory\n\
+  \  mcabal [FLAGS] fetch [--git=URL [--dir=DIR]] PKG      fetch files for package PKG\n\
+  \  mcabal [FLAGS] help                                   show this message\n\
+  \  mcabal [FLAGS] install [--git=URL [--dir=DIR]] [PKG]  build and install in current directory, or the package PKG\n\
+  \  mcabal [FLAGS] parse FILE                             just parse a Cabal file (for debugging)\n\
+  \  mcabal [FLAGS] update                                 retrieve new set of consistent packages from Stackage\n\
   \\n\
   \Flags:\n\
   \  --version                     show version\n\

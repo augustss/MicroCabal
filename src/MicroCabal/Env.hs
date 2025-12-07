@@ -21,7 +21,8 @@ data Env = Env {
   eflags     :: [(String, Bool)],   -- Cabal flags
   backend    :: Backend,            -- which compiler to use, default is MHS
   targets    :: [Target],           -- only build/install these
-  gitRepo    :: Maybe String        -- use git repo for package
+  gitRepo    :: Maybe String,       -- use git repo for package
+  subDir     :: Maybe String        -- subdirectory of git repo
   }
 
 data Target = TgtLib | TgtFor | TgtExe
