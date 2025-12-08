@@ -112,8 +112,8 @@ preserveCurrentDirectory io = do
   return a
 
 gitClone :: Env -> FilePath -> URL -> IO ()
-gitClone env dir (URL repo) = do
-  cmd env $ "git clone " ++ repo ++ " " ++ dir
+gitClone env dir (URL repo) =
+  cmd env $ "git clone --depth 1 --quiet " ++ repo ++ " " ++ dir
 
 -----
 
