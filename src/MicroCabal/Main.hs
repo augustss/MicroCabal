@@ -21,7 +21,7 @@ import MicroCabal.Unix
 
 -- Update cabal file when this changes
 version :: String
-version = "MicroCabal 0.5.6.0"
+version = "MicroCabal 0.5.7.0"
 
 main :: IO ()
 main = do
