@@ -21,7 +21,7 @@ import MicroCabal.Unix
 
 -- Update cabal file when this changes
 version :: String
-version = "MicroCabal 0.5.7.0"
+version = "MicroCabal 0.5.8.0"
 
 main :: IO ()
 main = do
@@ -142,7 +142,7 @@ cmdUpdate env [] = do
   let yml = parseYAML stk file
       pkgs = map hackName $ yamlToStackageList yml ++ dist
       ghcVersion = yamlToGHCVersion yml
-      hackName s = s{ stName = n, stVersion = v } where (n, v) = patchName (backend env) (stName s, stVersion s)
+      hackName s = s{ stName = n, stVersion = v } where (n, v) = patchName (backend env) env (stName s, stVersion s)
 --  putStrLn $ "==== " ++ ghcVersion
 --  putStrLn $ showYAML yml
 --  putStrLn $ show pkgs
@@ -210,21 +210,24 @@ cmdFetch env [pkg] = do
       pkgz = pkgs ++ ".tar.gz"
       pdir = dirForPackage env st
       file = pdir ++ ".tar.gz"
-  b <- doesDirectoryExist pdir
-  if b then
-    message env 1 $ "Already in " ++ pdir
-   else do
-    mkdir env pdir
-    message env 1 $ "Fetching package " ++ pkgs
-    case gitRepo env of
-      Nothing -> do
+  case gitRepo env of
+    Nothing -> do
+      -- Doing a regular hackage fetch.
+      b <- doesDirectoryExist pdir
+      if b then
+        message env 1 $ "No fetch, directory already exists " ++ pdir
+       else do
         message env 1 $ "Fetching from Hackage " ++ pkgz
+        mkdir env pdir
         wget env url file
         message env 1 $ "Unpacking " ++ pkgz ++ " in " ++ pdir
         tarx env (dirPackage env) file
-      Just repo -> do
-        message env 1 $ "Fetching from git repo " ++ pkg
-        gitClone env pdir (URL repo)
+    Just repo -> do
+      -- Doing a git fetch.
+      -- With --git we will always fetch, blowing away the old repo.
+      rmrf env pdir
+      message env 1 $ "Fetching from git repo " ++ pkg
+      gitClone env pdir (URL repo)
 cmdFetch _ _ = usage
 
 -----------------------------------------
@@ -240,13 +243,13 @@ findCabalFile _env = do
 cmdBuild :: Env -> [String] -> IO ()
 cmdBuild env [] = build env
 cmdBuild env [apkg] = do
-  let pkg = fst $ patchName (backend env) (apkg, undefined)
+  let pkg = fst $ patchName (backend env) env (apkg, undefined)
   message env 0 $ "Build package " ++ pkg
   st <- getPackageInfo env pkg
   let dir = dirForPackage env st
   b <- doesDirectoryExist dir
-  when (not b) $ do
-    message env 0 $ "Package not found, running 'fetch " ++ pkg ++ "'"
+  when (not b || isJust (gitRepo env)) $ do
+    message env 0 $ "Running 'fetch " ++ pkg ++ "'"
     cmdFetch env [pkg]
   message env 0 $ "Building in " ++ dir
   let dir' = maybe dir (dir </>) (subDir env)
@@ -508,4 +511,4 @@ cmdParse env [fn] = do
 cmdParse _ _ = error "cmdParse"
 
 normalizeAndPatch :: Env -> FlagInfo -> Cabal -> Cabal
-normalizeAndPatch env flags = patchDepends (backend env) . normalize flags
+normalizeAndPatch env flags = patchDepends (backend env) env . normalize flags

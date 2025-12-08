@@ -34,8 +34,8 @@ data Backend = Backend {
   compiler       :: String,                                 -- name&version, e.g., "ghc-9.8.2"
   compilerExe    :: String,                                 -- name of binary
   doesPkgExist   :: Env -> PackageName        -> IO Bool,   -- is the package available in the database?
-  patchDepends   :: Cabal -> Cabal,                         -- patch dependencies
-  patchName      :: (Name, Version) -> (Name, Version),     -- patch package name
+  patchDepends   :: Env -> Cabal -> Cabal,                  -- patch dependencies
+  patchName      :: Env -> (Name, Version) -> (Name, Version), -- patch package name
   buildPkgExe    :: Env -> Section -> Section -> IO (),     -- build executable the current directory
   buildPkgLib    :: Env -> Section -> Section -> IO (),     -- build the package in the current directory
   buildPkgForLib :: Env -> Section -> Section -> IO (),     -- build the foreign-library in the current directory
