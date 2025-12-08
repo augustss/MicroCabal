@@ -21,7 +21,7 @@ import MicroCabal.Unix
 
 -- Update cabal file when this changes
 version :: String
-version = "MicroCabal 0.5.6.0"
+version = "MicroCabal 0.5.7.0"
 
 main :: IO ()
 main = do
@@ -168,7 +168,7 @@ distPkgs =
   , StackagePackage "exceptions"   (makeVersion [0,10,9])     False []
   , StackagePackage "filepath"     (makeVersion [1,5,4,0])    False []
   , StackagePackage "ghc-compat"   (makeVersion [0,5,2,0])    False []
-  , StackagePackage "mtl"          (makeVersion [2,3,1])      False []
+  , StackagePackage "mtl"          (makeVersion [2,3,2])      False []
   , StackagePackage "os-string"    (makeVersion [2,0,7])      False []
   , StackagePackage "parsec"       (makeVersion [3,1,18,0])   False []
   , StackagePackage "pretty"       (makeVersion [1,1,3,6])    False []

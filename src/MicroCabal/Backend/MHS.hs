@@ -69,6 +69,7 @@ builtinPackages = [
   ("bytestring",makeVersion [0,12,1,0]),
   ("deepseq",   makeVersion [1,5,0,0]),
   ("directory", makeVersion [1,3,8,1]),
+  ("integer-logarithms", makeVersion [1,0,4]),
   ("hashable",  makeVersion [1,0,0,0]),    -- very rudimentary
   ("process",   makeVersion [1,6,18,0]),
   ("text",      makeVersion [2,1,1]),
