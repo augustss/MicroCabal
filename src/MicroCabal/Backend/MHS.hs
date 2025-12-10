@@ -118,7 +118,7 @@ setupStdArgs env flds = do
 binMhs :: String
 binMhs  = "bin" </> "mhs"
 
-mhsBuildExe :: Env -> Section -> Section -> IO ()
+mhsBuildExe :: Env -> Section -> Section -> IO FilePath
 mhsBuildExe env (Section _ _ gflds) (Section _ name flds) = do
   initDB env
   let mainIs  = getFieldString  flds         "main-is"
@@ -135,6 +135,7 @@ mhsBuildExe env (Section _ _ gflds) (Section _ name flds) = do
                           ["-z", "-a.","-o" ++ bin, mainIs']
   message env 0 $ "Build " ++ bin ++ " with mhs"
   mhs env args
+  return bin
 
 mhs :: Env -> String -> IO ()
 mhs env args = do
