@@ -163,6 +163,7 @@ getDistPkgs = return distPkgs
 distPkgs :: [StackagePackage]
 distPkgs =
   [ StackagePackage "array"        (makeVersion [0,5,8,0])    False []
+  , StackagePackage "binary"       (makeVersion [0,8,9,3])    False []
   , StackagePackage "containers"   (makeVersion [0,8])        False []
 --  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
   , StackagePackage "exceptions"   (makeVersion [0,10,9])     False []
@@ -172,8 +173,11 @@ distPkgs =
   , StackagePackage "os-string"    (makeVersion [2,0,7])      False []
   , StackagePackage "parsec"       (makeVersion [3,1,18,0])   False []
   , StackagePackage "pretty"       (makeVersion [1,1,3,6])    False []
+  , StackagePackage "terminfo"     (makeVersion [0,4,1,7])    False []
   , StackagePackage "time"         (makeVersion [1,15])       False []
   , StackagePackage "transformers" (makeVersion [0,6,2,0])    False []
+  , StackagePackage "unix"         (makeVersion [2,8,7,0])    False []
+  , StackagePackage "xhtml"        (makeVersion [3000,2,2,1]) False []
   ]
 
 -----------------------------------------
