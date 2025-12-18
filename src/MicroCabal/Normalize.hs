@@ -79,9 +79,10 @@ cond info = eval
         eval (Cimpl s mv) = n == s && maybe True (inVersionRange v) mv
                           -- Pretend we are ghc >= 9.0.  This is an ugly hack, but makes
                           -- some packages work with no change (change is hard!).
-                          || s == "ghc" && maybe False (inVersionRange hackv) mv
+                          || fromMaybe False (lookup "fake-ghc" (flags info)) &&
+                             s == "ghc" && maybe False (inVersionRange hackv) mv
           where (n, v) = impl info
-                hackv = makeVersion [9,0,0]
+                hackv = makeVersion [9,6,0]
 
 inVersionRange :: Version -> VersionRange -> Bool
 inVersionRange v (VEQ v') = v == v'

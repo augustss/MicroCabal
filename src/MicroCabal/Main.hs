@@ -55,7 +55,7 @@ decodeCommonArgs env = do
   let loop e ("-v"           : as) = loop e{ verbose = verbose e + 1 } as
       loop e ("-q"           : as) = loop e{ verbose = -1 } as
       loop e ("-r"           : as) = loop e{ recursive = True } as
-      loop e (('-':'f':s)    : as) = loop e{ eflags = decodeCabalFlags s } as
+      loop e (('-':'f':s)    : as) = loop e{ eflags = decodeCabalFlags s ++ eflags e } as
       loop e ("--ghc"        : as) = do be <- ghcBackend env; loop e{ backend = be } as
       loop e ("--mhs"        : as) = do be <- mhsBackend env; loop e{ backend = be } as
       loop e ("--dry-run"    : as) = loop e{ dryRun = True } as
