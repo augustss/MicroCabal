@@ -21,10 +21,11 @@ data Env = Env {
   eflags     :: [(String, Bool)],   -- Cabal flags
   backend    :: Backend,            -- which compiler to use, default is MHS
   targets    :: [Target],           -- only build/install these
-  gitRepo    :: Maybe String        -- use git repo for package
+  gitRepo    :: Maybe String,       -- use git repo for package
+  subDir     :: Maybe String        -- subdirectory of git repo
   }
 
-data Target = TgtLib | TgtFor | TgtExe
+data Target = TgtLib | TgtFor | TgtExe | TgtTst
   deriving (Eq)
 
 data Backend = Backend {
@@ -33,9 +34,9 @@ data Backend = Backend {
   compiler       :: String,                                 -- name&version, e.g., "ghc-9.8.2"
   compilerExe    :: String,                                 -- name of binary
   doesPkgExist   :: Env -> PackageName        -> IO Bool,   -- is the package available in the database?
-  patchDepends   :: Cabal -> Cabal,                         -- patch dependencies
-  patchName      :: (Name, Version) -> (Name, Version),     -- patch package name
-  buildPkgExe    :: Env -> Section -> Section -> IO (),     -- build executable the current directory
+  patchDepends   :: Env -> Cabal -> Cabal,                  -- patch dependencies
+  patchName      :: Env -> (Name, Version) -> (Name, Version), -- patch package name
+  buildPkgExe    :: Env -> Section -> Section -> IO FilePath,  -- build executable the current directory
   buildPkgLib    :: Env -> Section -> Section -> IO (),     -- build the package in the current directory
   buildPkgForLib :: Env -> Section -> Section -> IO (),     -- build the foreign-library in the current directory
   installPkgExe  :: Env -> Section -> Section -> IO (),     -- install the package from the current directory

@@ -19,8 +19,9 @@ import MicroCabal.StackageList
 import MicroCabal.Unix
 --import MicroCabal.YAML
 
+-- Update cabal file when this changes
 version :: String
-version = "MicroCabal 0.5.4.0"
+version = "MicroCabal 0.5.8.0"
 
 main :: IO ()
 main = do
@@ -29,6 +30,7 @@ main = do
     [] -> usage
     ["--version"]  -> putStrLn version
     "build"   : as -> decodeGit cmdBuild   env as
+    "test"    : as ->           cmdTest    env as
     "clean"   : as ->           cmdClean   env as
     "fetch"   : as -> decodeGit cmdFetch   env as
     "help"    : as ->           cmdHelp    env as
@@ -44,7 +46,7 @@ setupEnv = do
   let cdir = fromMaybe (home </> ".mcabal") cdirm
       env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, eflags = [],
                  backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtFor, TgtExe],
-                 gitRepo = Nothing, dryRun = False, useNightly = True }
+                 gitRepo = Nothing, dryRun = False, useNightly = True, subDir = Nothing }
   be <- mhsBackend env
   return env{ backend = be }
 
@@ -141,7 +143,7 @@ cmdUpdate env [] = do
   let yml = parseYAML stk file
       pkgs = map hackName $ yamlToStackageList yml ++ dist
       ghcVersion = yamlToGHCVersion yml
-      hackName s = s{ stName = n, stVersion = v } where (n, v) = patchName (backend env) (stName s, stVersion s)
+      hackName s = s{ stName = n, stVersion = v } where (n, v) = patchName (backend env) env (stName s, stVersion s)
 --  putStrLn $ "==== " ++ ghcVersion
 --  putStrLn $ showYAML yml
 --  putStrLn $ show pkgs
@@ -162,17 +164,21 @@ getDistPkgs = return distPkgs
 distPkgs :: [StackagePackage]
 distPkgs =
   [ StackagePackage "array"        (makeVersion [0,5,8,0])    False []
+  , StackagePackage "binary"       (makeVersion [0,8,9,3])    False []
   , StackagePackage "containers"   (makeVersion [0,8])        False []
 --  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
   , StackagePackage "exceptions"   (makeVersion [0,10,9])     False []
   , StackagePackage "filepath"     (makeVersion [1,5,4,0])    False []
-  , StackagePackage "ghc-compat"   (makeVersion [0,5,0,0])    False []
-  , StackagePackage "mtl"          (makeVersion [2,3,1])      False []
+  , StackagePackage "ghc-compat"   (makeVersion [0,5,4,0])    False []
+  , StackagePackage "mtl"          (makeVersion [2,3,2])      False []
   , StackagePackage "os-string"    (makeVersion [2,0,7])      False []
   , StackagePackage "parsec"       (makeVersion [3,1,18,0])   False []
   , StackagePackage "pretty"       (makeVersion [1,1,3,6])    False []
+  , StackagePackage "terminfo"     (makeVersion [0,4,1,7])    False []
   , StackagePackage "time"         (makeVersion [1,15])       False []
   , StackagePackage "transformers" (makeVersion [0,6,2,0])    False []
+  , StackagePackage "unix"         (makeVersion [2,8,7,0])    False []
+  , StackagePackage "xhtml"        (makeVersion [3000,2,2,1]) False []
   ]
 
 -----------------------------------------
@@ -209,21 +215,24 @@ cmdFetch env [pkg] = do
       pkgz = pkgs ++ ".tar.gz"
       pdir = dirForPackage env st
       file = pdir ++ ".tar.gz"
-  b <- doesDirectoryExist pdir
-  if b then
-    message env 1 $ "Already in " ++ pdir
-   else do
-    mkdir env pdir
-    message env 1 $ "Fetching package " ++ pkgs
-    case gitRepo env of
-      Nothing -> do
+  case gitRepo env of
+    Nothing -> do
+      -- Doing a regular hackage fetch.
+      b <- doesDirectoryExist pdir
+      if b then
+        message env 1 $ "No fetch, directory already exists " ++ pdir
+       else do
         message env 1 $ "Fetching from Hackage " ++ pkgz
+        mkdir env pdir
         wget env url file
         message env 1 $ "Unpacking " ++ pkgz ++ " in " ++ pdir
         tarx env (dirPackage env) file
-      Just repo -> do
-        message env 1 $ "Fetching from git repo " ++ pkg
-        gitClone env pdir (URL repo)
+    Just repo -> do
+      -- Doing a git fetch.
+      -- With --git we will always fetch, blowing away the old repo.
+      rmrf env pdir
+      message env 1 $ "Fetching from git repo " ++ pkg
+      gitClone env pdir (URL repo)
 cmdFetch _ _ = usage
 
 -----------------------------------------
@@ -239,18 +248,23 @@ findCabalFile _env = do
 cmdBuild :: Env -> [String] -> IO ()
 cmdBuild env [] = build env
 cmdBuild env [apkg] = do
-  let pkg = fst $ patchName (backend env) (apkg, undefined)
+  let pkg = fst $ patchName (backend env) env (apkg, undefined)
   message env 0 $ "Build package " ++ pkg
   st <- getPackageInfo env pkg
   let dir = dirForPackage env st
   b <- doesDirectoryExist dir
-  when (not b) $ do
-    message env 0 $ "Package not found, running 'fetch " ++ pkg ++ "'"
+  when (not b || isJust (gitRepo env)) $ do
+    message env 0 $ "Running 'fetch " ++ pkg ++ "'"
     cmdFetch env [pkg]
   message env 0 $ "Building in " ++ dir
-  setCurrentDirectory dir
+  let dir' = maybe dir (dir </>) (subDir env)
+  setCurrentDirectory dir'
   cmdBuild env []
 cmdBuild _ _ = usage
+
+cmdTest :: Env -> [String] -> IO ()
+cmdTest env [] = build env { targets = TgtTst : targets env }
+cmdTest _ _ = usage
 
 getGlobal :: Cabal -> Section
 getGlobal (Cabal sects) =
@@ -291,19 +305,22 @@ build env = do
       sectLib s@(Section "library"         _ _) | TgtLib `elem` targets env && isBuildable s = buildLib env glob s
       sectLib s@(Section "foreign-library" _ _) | TgtFor `elem` targets env && isBuildable s = buildForeignLib env glob s
       sectLib _ = return Nothing
-      sectExe ll s@(Section "executable"      _ _) | TgtExe `elem` targets env && isBuildable s = buildExe env glob s ll
+      sectExe ll s@(Section "executable"   _ _) | TgtExe `elem` targets env && isBuildable s = void $ buildExe env glob s ll
       sectExe _ _ = return ()
+      sectTst ll s@(Section "test-suite"   _ _) | TgtTst `elem` targets env && isBuildable s = buildExe env glob s ll >>= cmd env
+      sectTst _ _ = return ()
       sects' = addMissing sects
   message env 3 $ "Unnormalized Cabal file:\n" ++ show cbl
   message env 2 $ "Normalized Cabal file:\n" ++ show ncbl
   -- Build libs first, then exes
-  localLibs <- mapM sectLib sects'
-  mapM_ (sectExe $ catMaybes localLibs) sects'
+  localLibs <- catMaybes <$> mapM sectLib sects'
+  mapM_ (sectExe localLibs) sects'
+  mapM_ (sectTst localLibs) sects'
 
 isBuildable :: Section -> Bool
 isBuildable (Section _ _ flds) = getFieldBool True flds "buildable"
 
-buildExe :: Env -> Section -> Section -> [Name] -> IO ()
+buildExe :: Env -> Section -> Section -> [Name] -> IO FilePath
 buildExe env glob@(Section _ _ sglob) sect@(Section _ name flds) localLibs = do
   message env 0 $ "Building executable " ++ name
   createPathFile env glob sect
@@ -369,7 +386,8 @@ addMissing sects = sects
 -----------------------------------------
 
 decodeGit :: (Env -> [String] -> IO ()) -> Env -> [String] -> IO ()
-decodeGit io env (arg:args) | repo@(Just _) <- stripPrefix "--git=" arg = io (env{ gitRepo = repo }) args
+decodeGit io env (arg:args) | repo@(Just _) <- stripPrefix "--git=" arg = decodeGit io (env{ gitRepo = repo }) args
+decodeGit io env (arg:args) |  dir@(Just _) <- stripPrefix "--dir=" arg = decodeGit io (env{ subDir  = dir  }) args
 decodeGit io env args = io env args
 
 cmdInstall :: Env -> [String] -> IO ()
@@ -462,13 +480,14 @@ installCFiles env glob@(Section _ _ gflds) sect@(Section _ _ flds) = do
 cmdHelp :: Env -> [String] -> IO ()
 cmdHelp _ _ = putStrLn "\
   \Available commands:\n\
-  \  mcabal [FLAGS] build [--git=URL] [PKG]    build in current directory, or the package PKG\n\
-  \  mcabal [FLAGS] clean                      clean in the current directory\n\
-  \  mcabal [FLAGS] fetch [--git=URL] PKG      fetch files for package PKG\n\
-  \  mcabal [FLAGS] help                       show this message\n\
-  \  mcabal [FLAGS] install [--git=URL] [PKG]  build and install in current directory, or the package PKG\n\
-  \  mcabal [FLAGS] parse FILE                 just parse a Cabal file (for debugging)\n\
-  \  mcabal [FLAGS] update                     retrieve new set of consistent packages from Stackage\n\
+  \  mcabal [FLAGS] build [--git=URL [--dir=DIR]] [PKG]    build in current directory, or the package PKG\n\
+  \  mcabal [FLAGS] test                                   build and run tests in current directory\n\
+  \  mcabal [FLAGS] clean                                  clean in the current directory\n\
+  \  mcabal [FLAGS] fetch [--git=URL [--dir=DIR]] PKG      fetch files for package PKG\n\
+  \  mcabal [FLAGS] help                                   show this message\n\
+  \  mcabal [FLAGS] install [--git=URL [--dir=DIR]] [PKG]  build and install in current directory, or the package PKG\n\
+  \  mcabal [FLAGS] parse FILE                             just parse a Cabal file (for debugging)\n\
+  \  mcabal [FLAGS] update                                 retrieve new set of consistent packages from Stackage\n\
   \\n\
   \Flags:\n\
   \  --version                     show version\n\
@@ -506,4 +525,4 @@ cmdParse env [fn] = do
 cmdParse _ _ = error "cmdParse"
 
 normalizeAndPatch :: Env -> FlagInfo -> Cabal -> Cabal
-normalizeAndPatch env flags = patchDepends (backend env) . normalize flags
+normalizeAndPatch env flags = patchDepends (backend env) env . normalize flags

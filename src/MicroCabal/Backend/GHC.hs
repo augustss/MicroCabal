@@ -31,8 +31,8 @@ ghcBackend env = do
     compiler = ghcVersion,
     compilerExe = exe,
     doesPkgExist = ghcExists,
-    patchDepends = id,
-    patchName = id,
+    patchDepends = \ _ x -> x,
+    patchName = \ _ x -> x,
     buildPkgExe = ghcBuildExe,
     buildPkgLib = ghcBuildLib,
     buildPkgForLib = ghcBuildForeignLib,
@@ -101,7 +101,7 @@ setupStdArgs env flds = do
 binGhc :: FilePath
 binGhc  = "bin" </> "ghc"
 
-ghcBuildExe :: Env -> Section -> Section -> IO ()
+ghcBuildExe :: Env -> Section -> Section -> IO FilePath
 ghcBuildExe env _ (Section _ name flds) = do
   initDB env
   let mainIs  = getFieldString flds "main-is"
@@ -114,6 +114,7 @@ ghcBuildExe env _ (Section _ name flds) = do
                 [ ">/dev/null" | verbose env <= 0 ]
   message env 0 $ "Building executable " ++ bin ++ " with ghc"
   ghc env args
+  return bin
 
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
 findMainIs _ [] fn = error $ "cannot find " ++ show fn
