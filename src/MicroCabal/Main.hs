@@ -30,6 +30,7 @@ main = do
     [] -> usage
     ["--version"]  -> putStrLn version
     "build"   : as -> decodeGit cmdBuild   env as
+    "test"    : as ->           cmdTest    env as
     "clean"   : as ->           cmdClean   env as
     "fetch"   : as -> decodeGit cmdFetch   env as
     "help"    : as ->           cmdHelp    env as
@@ -261,6 +262,10 @@ cmdBuild env [apkg] = do
   cmdBuild env []
 cmdBuild _ _ = usage
 
+cmdTest :: Env -> [String] -> IO ()
+cmdTest env [] = build env { targets = TgtTst : targets env }
+cmdTest _ _ = usage
+
 getGlobal :: Cabal -> Section
 getGlobal (Cabal sects) =
   fromMaybe (error "no global section") $ listToMaybe [ s | s@(Section "global" _ _) <- sects ]
@@ -300,19 +305,22 @@ build env = do
       sectLib s@(Section "library"         _ _) | TgtLib `elem` targets env && isBuildable s = buildLib env glob s
       sectLib s@(Section "foreign-library" _ _) | TgtFor `elem` targets env && isBuildable s = buildForeignLib env glob s
       sectLib _ = return Nothing
-      sectExe ll s@(Section "executable"      _ _) | TgtExe `elem` targets env && isBuildable s = buildExe env glob s ll
+      sectExe ll s@(Section "executable"   _ _) | TgtExe `elem` targets env && isBuildable s = void $ buildExe env glob s ll
       sectExe _ _ = return ()
+      sectTst ll s@(Section "test-suite"   _ _) | TgtTst `elem` targets env && isBuildable s = buildExe env glob s ll >>= cmd env
+      sectTst _ _ = return ()
       sects' = addMissing sects
   message env 3 $ "Unnormalized Cabal file:\n" ++ show cbl
   message env 2 $ "Normalized Cabal file:\n" ++ show ncbl
   -- Build libs first, then exes
-  localLibs <- mapM sectLib sects'
-  mapM_ (sectExe $ catMaybes localLibs) sects'
+  localLibs <- catMaybes <$> mapM sectLib sects'
+  mapM_ (sectExe localLibs) sects'
+  mapM_ (sectTst localLibs) sects'
 
 isBuildable :: Section -> Bool
 isBuildable (Section _ _ flds) = getFieldBool True flds "buildable"
 
-buildExe :: Env -> Section -> Section -> [Name] -> IO ()
+buildExe :: Env -> Section -> Section -> [Name] -> IO FilePath
 buildExe env glob@(Section _ _ sglob) sect@(Section _ name flds) localLibs = do
   message env 0 $ "Building executable " ++ name
   createPathFile env glob sect
@@ -473,6 +481,7 @@ cmdHelp :: Env -> [String] -> IO ()
 cmdHelp _ _ = putStrLn "\
   \Available commands:\n\
   \  mcabal [FLAGS] build [--git=URL [--dir=DIR]] [PKG]    build in current directory, or the package PKG\n\
+  \  mcabal [FLAGS] test                                   build and run tests in current directory\n\
   \  mcabal [FLAGS] clean                                  clean in the current directory\n\
   \  mcabal [FLAGS] fetch [--git=URL [--dir=DIR]] PKG      fetch files for package PKG\n\
   \  mcabal [FLAGS] help                                   show this message\n\
