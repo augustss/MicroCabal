@@ -171,8 +171,8 @@ pVersion = pSpaces *> (makeVersion <$> esepBy1 pNumber pDot)
 pVersionRange :: P VersionRange
 pVersionRange = pVOr
   where
-    pVOr  = foldr1 VOr  <$> esepBy1 pVAnd (pStrW "&&" <* pWhite)
-    pVAnd = foldr1 VAnd <$> esepBy1 pVOp  (pStrW "||" <* pWhite)
+    pVOr  = foldr1 VOr  <$> esepBy1 pVAnd (pStrW "||" <* pWhite)
+    pVAnd = foldr1 VAnd <$> esepBy1 pVOp  (pStrW "&&" <* pWhite)
     pVOp  = (pVOper <*> (pSpaces *> pVersion))
         <|< pParens pVersionRange
         <|< (pStr "=="  *> pVEq)
