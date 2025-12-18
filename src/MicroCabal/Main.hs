@@ -480,6 +480,7 @@ cmdHelp _ _ = putStrLn "\
   \  --mhs                         compile using mhs (default)\n\
   \  --git=URL                     fetch from the Git repo instead of hackage\n\
   \  --dry-run                     do NOT execute the commands, just print\n\
+  \  --no-nightly                  use latest versioned snapshot from stackage instead of nightly\n\
   \\n\
   \Installs go to $CABALDIR if set, otherwise $HOME/.mcabal.\n\
   \"
