@@ -76,7 +76,12 @@ cond info = eval
         eval (Cos s)    = os info == s
         eval (Carch s)  = arch info == s
         eval (Cflag n)  = fromMaybe (error $ "Undefined flag " ++ show n) $ lookup (map toLower n) (flags info)
-        eval (Cimpl s mv) = n == s && maybe True (inVersionRange v) mv  where (n, v) = impl info
+        eval (Cimpl s mv) = n == s && maybe True (inVersionRange v) mv
+                          -- Pretend we are ghc >= 9.0.  This is an ugly hack, but makes
+                          -- some packages work with no change (change is hard!).
+                          s == "ghc" && maybe False (inVersionRange hackv) mv
+          where (n, v) = impl info
+                hackv = makeVersion [9,0,0]
 
 inVersionRange :: Version -> VersionRange -> Bool
 inVersionRange v (VEQ v') = v == v'
