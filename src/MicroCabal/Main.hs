@@ -167,7 +167,7 @@ distPkgs =
   , StackagePackage "binary"       (makeVersion [0,8,9,3])    False []
   , StackagePackage "containers"   (makeVersion [0,8])        False []
 --  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
-  , StackagePackage "exceptions"   (makeVersion [0,10,9])     False []
+  , StackagePackage "exceptions"   (makeVersion [0,10,11])    False []
   , StackagePackage "filepath"     (makeVersion [1,5,4,0])    False []
   , StackagePackage "ghc-compat"   (makeVersion [0,5,4,0])    False []
   , StackagePackage "mtl"          (makeVersion [2,3,2])      False []
@@ -215,23 +215,19 @@ cmdFetch env [pkg] = do
       pkgz = pkgs ++ ".tar.gz"
       pdir = dirForPackage env st
       file = pdir ++ ".tar.gz"
+  rmrf env pdir            -- remove existing directory
   case gitRepo env of
     Nothing -> do
       -- Doing a regular hackage fetch.
-      b <- doesDirectoryExist pdir
-      if b then
-        message env 1 $ "No fetch, directory already exists " ++ pdir
-       else do
-        message env 1 $ "Fetching from Hackage " ++ pkgz
-        mkdir env pdir
-        wget env url file
-        message env 1 $ "Unpacking " ++ pkgz ++ " in " ++ pdir
-        tarx env (dirPackage env) file
+      message env 1 $ "Fetching from Hackage " ++ pkgz
+      mkdir env pdir
+      wget env url file
+      message env 1 $ "Unpacking " ++ pkgz ++ " in " ++ pdir
+      tarx env (dirPackage env) file
     Just repo -> do
       -- Doing a git fetch.
       -- With --git we will always fetch, blowing away the old repo.
-      rmrf env pdir
-      message env 1 $ "Fetching from git repo " ++ pkg
+      message env 1 $ "Fetching from git repo " ++ repo
       gitClone env pdir (URL repo)
 cmdFetch _ _ = usage
 
