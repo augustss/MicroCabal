@@ -50,19 +50,10 @@ yamlToStackageList _ = error "Unrecognized Stackage package list format"
 -- XXX Ugly, ugly hack because the YAML parser is brtoken.
 yamlToGHCVersion :: YAMLValue -> String
 yamlToGHCVersion (YRecord flds) =
-  let bad n = error "yamlToGHCVersion: Unrecognized Stackage package list format " ++ show (n::Int)
-  in  case lookup "packages" flds of
-        Just (YArray packages) ->
-          case last packages of
-            YRecord pflds ->
-              case lookup "resolver" pflds of
-                Just (YRecord rflds) ->
-                  case lookup "compiler" rflds of
-                    Just (YString s) -> s
-                    _ -> bad 1
-                _ -> bad 2
-            _ -> bad 3
-        _ -> bad 4
+  fromMaybe (error "yamlToGHCVersion: no GHC version") $ do
+  YRecord pflds <- lookup "resolver" flds
+  YString ver <- lookup "compiler" pflds
+  return ver
 yamlToGHCVersion _ = error "Unrecognized Stackage package list format"
 
 addFlags :: [(YAMLFieldName, YAMLValue)] -> StackagePackage -> StackagePackage

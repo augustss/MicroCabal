@@ -113,17 +113,17 @@ getBestStackage env = do
       (snap, snap') =
         if useNightly env then
           -- Pick nightly snapshot
-          let snap = fromMaybe (error "no nightly snapshot found") $ lookup nightlyName snaps
+          let asnap = fromMaybe (error "no nightly snapshot found") $ lookup nightlyName snaps
               fixLeading0 ('/':'0':cs) = '/' : fixLeading0 cs
               fixLeading0 (c:cs) = c : fixLeading0 cs
               fixLeading0 cs = cs
-          in  (snap, fixLeading0 $ map (\ c -> if c == '-' then '/' else c) snap)
+          in  (asnap, fixLeading0 $ map (\ c -> if c == '-' then '/' else c) asnap)
         else
           -- Pick LTS snapshot
-          let snap = snd $ last $
+          let asnap = snd $ last $
                      [(0::Int, error "no lts snapshots found")] ++
                      sort [ (l, r) | (lp, r) <- snaps, Just l <- [stripPrefix "lts-" lp >>= readMaybe] ]
-          in  (snap, map (\ c -> if c == '-' || c == '.' then '/' else c) snap)
+          in  (asnap, map (\ c -> if c == '-' || c == '.' then '/' else c) asnap)
 
       snapURL = URL $ snapshotSource ++ snap' ++ ".yaml"
   message env 1 $ "Picking Stackage snapshot " ++ snap

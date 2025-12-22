@@ -18,7 +18,10 @@ parseCabal :: FilePath -> String -> Cabal
 parseCabal fn rfile = runP pCabalTop fn $ dropCabalComments rfile
 
 parseYAML :: FilePath -> String -> YAMLValue
-parseYAML fn rfile = runP pYAMLTop fn $ dropYAMLComments rfile
+parseYAML fn s =
+  case parseYaml s of
+    Left e -> error $ "YAML parse failed " ++ show fn ++ ": " ++ e
+    Right y -> y
 
 parseSnapshots :: FilePath -> String -> [(String, String)]
 parseSnapshots fn rfile = runP pSnapshotsTop fn rfile
@@ -88,9 +91,6 @@ skipEmpty s =
 
 pushColumn :: P ()
 pushColumn = mapTokenState (\ (LS i ks cs) -> LS i (i:ks) cs)
-
-pushFieldSep :: P ()
-pushFieldSep = mapTokenState (\ (LS i ks cs) -> LS i ks (fieldSep:cs))
 
 lower :: String -> String
 lower = map toLower
@@ -463,58 +463,6 @@ parsers =
   where ( # ) = (,)
   -- XXX use local fixity
 
-
-----------------------------------------------------------------------
-
--- XXX Wrong for strings
-dropYAMLComments :: String -> String
-dropYAMLComments [] = []
-dropYAMLComments (c:cs) | c == '#' = dropYAMLComments (dropWhile (/= '\n') cs)
-                        | otherwise = c : dropYAMLComments cs
-
-pYAMLTop :: P YAMLValue
-pYAMLTop = pYAMLRecord <* pWhite <* pChar end
-
-pYAMLValue :: P YAMLValue
-pYAMLValue =
-      (YBool   <$> pBool)
-  <|< (YInt    <$> pNumber)
---  <|< (YString <$> pString)
-  <|< pYAMLArray
-  <|< pYAMLRecord
-  <|< (YString <$> pYAMLFree)
-
-pYAMLArray :: P YAMLValue
-pYAMLArray = do
-  pWhite
-  let
-    pElem    = pChar '-' *> pSpaces *> pYAMLValue
-    pElemFS  = pWhite *> pElem <* pFieldSep
-    pElemsFS = esome pElemFS
-    pElemNL  = pElem <* pChar '\n'
-    pElemsNL = pFieldSep *> pChar '\n' *> esome pElemNL <* pushFieldSep
-  YArray <$> (pElemsNL <|< pElemsFS)
-
-pYAMLRecord :: P YAMLValue
-pYAMLRecord = YRecord <$> esome pYAMLField
-
-pYAMLFree :: P String
-pYAMLFree = do
-  pSpaces
-  d <- nextToken
-  guard (d /= '-')
-  txt <- satisfyMany (\ c -> c /= end && c /= fieldSep && c /= '\n')
-  pure txt
-
-pYAMLField :: P (YAMLFieldName, YAMLValue)
-pYAMLField = do
-  pWhite
-  pushColumn
-  n <- pFieldName
-  pColon
-  v <- pYAMLValue
-  pFieldSep
-  pure (n, v)
 
 ----------------------------------------------------------------------
 
