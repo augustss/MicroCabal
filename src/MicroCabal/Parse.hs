@@ -234,17 +234,12 @@ pSpaceList p = esepBy p' pWhite
   where
     -- sometimes (kan-extensions.cabal) there is a spurious comma,
     -- so allow that
-    p' = p <* eoptional (pStr ",")
+    p' = p <* eoptional (pStrW ",")
 
 pOptCommaList :: P a -> P [a]
 pOptCommaList p =
     (pStrW "," *> pCommaList' p)   -- it starts with a ',', so it must be comma separated
-  <|< do
-    a <- p  -- parse one item
-    -- now check if we have a comma or not, and pick the parser for the rest
-    as <- (pStrW "," *> pCommaList' p) <|< pSpaceList p
-    return (a:as)
-  <|< ([] <$ pWhite)
+  <|< pSpaceList p
 
 pVComma :: P Value
 pVComma = VItems <$> pCommaList pItem
