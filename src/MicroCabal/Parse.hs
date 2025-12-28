@@ -418,29 +418,29 @@ parsers =
   --- library fields
   , "visibility"                     # (VItem <$> pItem)
   --- foreign-library fields
-  , "type"                           # pFreeText
+  , "type"                           # (VItem <$> pItem)
   --- package fields
   , "author"                         # pFreeText
-  , "bug-reports"                    # pFreeText
+  , "bug-reports"                    # (VItem <$> pItem)
   , "build-type"                     # (VItem <$> pItem)
   , "cabal-version"                  # pFreeText -- (VRange <$> pVersionRange)
   , "category"                       # pFreeText
   , "copyright"                      # pFreeText
-  , "data-dir"                       # pVSpace
+  , "data-dir"                       # (VItem <$> pItem)
   , "data-files"                     # pVOptComma
   , "description"                    # pFreeText
   , "extra-doc-files"                # pVOptComma
   , "extra-source-files"             # pVOptComma
   , "extra-tmp-files"                # pVOptComma
-  , "homepage"                       # pFreeText
-  , "license"                        # pFreeText
+  , "homepage"                       # (VItem <$> pItem)
+  , "license"                        # (VItem <$> pItem)
   , "license-file"                   # pVOptComma
   , "license-files"                  # pVOptComma
   , "maintainer"                     # pFreeText
   , "name"                           # (VItem <$> pItem)
-  , "package-url"                    # pFreeText
+  , "package-url"                    # (VItem <$> pItem)
   , "stability"                      # pFreeText
-  , "subdir"                         # pFreeText
+  , "subdir"                         # (VItem <$> pItem)
   , "synopsis"                       # pFreeTextX
   , "tested-with"                    # pVLibs
   , "version"                        # (VVersion <$> pVersion)
@@ -449,7 +449,7 @@ parsers =
   , "test-module"                    # (VItem <$> pItem)
   , "type"                           # (VItem <$> pItem)
   -- source-repository fields
-  , "location"                       # pFreeText
+  , "location"                       # (VItem <$> pItem)
   -- flag fields
   , "manual"                         # (VBool <$> pBoolNL)
   , "default"                        # (VBool <$> pBoolNL)

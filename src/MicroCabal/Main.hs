@@ -266,20 +266,21 @@ getGlobal :: Cabal -> Section
 getGlobal (Cabal sects) =
   fromMaybe (error "no global section") $ listToMaybe [ s | s@(Section "global" _ _) <- sects ]
 
-makeDataPrefix :: Env -> Section -> Section -> FilePath
-makeDataPrefix env (Section _ _ glob) (Section _ name _) =
-  let vers = getVersion glob "version"
+makeDataPrefix :: Env -> Section -> FilePath
+makeDataPrefix env (Section _ _ glob) =
+  let name = getFieldString glob "name"
+      vers = getVersion glob "version"
       pkgVers = name ++ "-" ++ showVersion vers
       dataPrefix = cabalDir env </> compiler (backend env) </> "packages" </> pkgVers
   in  dataPrefix
 
-createPathFile :: Env -> Section -> Section -> IO ()
-createPathFile env gsect@(Section _ _ glob) sect = do
+createPathFile :: Env -> Section -> IO ()
+createPathFile env gsect@(Section _ _ glob) = do
   let vers = getVersion glob "version"
       name = getFieldString glob "name"
       mdlName = "Paths_" ++ map (\ c -> if c == '-' then '_' else c) name
       pathName = pathModuleDir env </> mdlName ++ ".hs"
-      dataPrefix = makeDataPrefix env gsect sect
+      dataPrefix = makeDataPrefix env gsect
       dataDir = dataPrefix </> "data"
   message env 1 $ "Creating path module " ++ pathName
   mkdir env (pathModuleDir env)
@@ -287,7 +288,8 @@ createPathFile env gsect@(Section _ _ glob) sect = do
     "module " ++ mdlName ++ " where\n" ++
     "import Data.Version\n" ++
     "version :: Version; version = makeVersion " ++ show (versionBranch vers) ++ "\n" ++
-    "getDataDir :: IO FilePath; getDataDir = return " ++ show dataDir ++ "\n"
+    "getDataDir :: IO FilePath; getDataDir = return " ++ show dataDir ++ "\n" ++
+    "getDataFileName :: FilePath -> IO FilePath; getDataFileName name = fmap (++ '/' : name) getDataDir\n"
 
 build :: Env -> IO ()
 build env = do
@@ -319,7 +321,7 @@ isBuildable (Section _ _ flds) = getFieldBool True flds "buildable"
 buildExe :: Env -> Section -> Section -> [Name] -> IO FilePath
 buildExe env glob@(Section _ _ sglob) sect@(Section _ name flds) localLibs = do
   message env 0 $ "Building executable " ++ name
-  createPathFile env glob sect
+  createPathFile env glob
   let deps = getBuildDepends flds
       pkgs = [ p | (p, _, _) <- deps, p `notElem` localLibs ]
       vers =  getVersion sglob "version"
@@ -345,7 +347,7 @@ hackLocalLibs env locals vers (Section stype sname flds) =
 buildLib :: Env -> Section -> Section -> IO (Maybe Name)
 buildLib env glob sect@(Section _ name flds) = do
   message env 0 $ "Building library " ++ name
-  createPathFile env glob sect
+  createPathFile env glob
   let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
   buildPkgLib (backend env) env glob sect
@@ -354,7 +356,7 @@ buildLib env glob sect@(Section _ name flds) = do
 buildForeignLib :: Env -> Section -> Section -> IO (Maybe Name)
 buildForeignLib env glob sect@(Section _ name flds) = do
   message env 0 $ "Building foreign-library " ++ name
-  createPathFile env glob sect
+  createPathFile env glob
   let pkgs = getBuildDependsPkg flds
   mapM_ (checkDep env) pkgs
   buildPkgForLib (backend env) env glob sect
@@ -409,12 +411,12 @@ install env = do
       sect _ = return ()
   message env 3 $ "Unnormalized Cabal file:\n" ++ show cbl
   message env 2 $ "Normalized Cabal file:\n" ++ show ncbl
+  installDataFiles env glob
   mapM_ sect $ addMissing sects
 
 installExe :: Env -> Section -> Section -> IO ()
 installExe env glob sect@(Section _ name _) = do
   message env 0 $ "Installing executable " ++ name
-  installDataFiles env glob sect
   installIncludeFiles env glob sect
   installCFiles env glob sect
   installPkgExe (backend env) env glob sect
@@ -422,49 +424,44 @@ installExe env glob sect@(Section _ name _) = do
 installLib :: Env -> Section -> Section -> IO ()
 installLib env glob sect@(Section _ name _) = do
   message env 0 $ "Installing library " ++ name
-  installDataFiles env glob sect
   installIncludeFiles env glob sect
   installCFiles env glob sect
   installPkgLib (backend env) env glob sect
 
-installDataFiles :: Env -> Section -> Section -> IO ()
-installDataFiles env glob@(Section _ _ gflds) sect@(Section _ _ flds) = do
-  let gdatas = getFieldStrings gflds [] "data-files"
-      datas  = getFieldStrings  flds [] "data-files"
-      dataPrefix = makeDataPrefix env glob sect
-      dataDir  = dataPrefix </> "data"
-  --print ("installDataFiles", gdatas ++ datas, dataDir)
-  case gdatas ++ datas of
+installDataFiles :: Env -> Section -> IO ()
+installDataFiles env glob@(Section _ _ flds) = do
+  let datas   = getFieldStrings flds [] "data-files"
+      dataDir = fromMaybe "." (getFieldStringM flds "data-dir")
+      installDataPrefix = makeDataPrefix env glob
+      installDataDir    = installDataPrefix </> "data"
+  files <- matchFiles dataDir datas
+  case files of
     [] -> return ()
-    pats -> do
-      files <- matchFiles "." pats
+    _ -> do
       message env 1 $ "Installing data files " ++ unwords files
-      mkdir env dataDir
-      copyFiles env "." files dataDir
+      mkdir env installDataDir
+      copyFiles env dataDir files installDataDir
 
 installIncludeFiles :: Env -> Section -> Section -> IO ()
-installIncludeFiles env glob@(Section _ _ gflds) sect@(Section _ _ flds) = do
-  let gincs = getFieldStrings gflds [] "install-includes"
-      incs  = getFieldStrings  flds [] "install-includes"
-      dataPrefix = makeDataPrefix env glob sect
+installIncludeFiles env glob (Section _ _ flds) = do
+  let incs = getFieldStrings flds [] "install-includes"
+      dataPrefix = makeDataPrefix env glob
       incDir  = dataPrefix </> "include"
-  case gincs ++ incs of
+      inc = head $ getFieldStrings flds ["."] "include-dirs" -- XXX search all dirs
+  files <- matchFiles inc incs
+  case files of
     [] -> return ()
-    pats -> do
-      let inc = head $ getFieldStrings flds ["."] "include-dirs"
-      files <- matchFiles inc pats
-      -- print (pats, files)
+    _ -> do
       message env 1 $ "Installing include files " ++ unwords files
       mkdir env incDir
       copyFiles env inc files incDir
 
 installCFiles :: Env -> Section -> Section -> IO ()
-installCFiles env glob@(Section _ _ gflds) sect@(Section _ _ flds) = do
-  let gcs = getFieldStrings gflds [] "c-sources"
-      cs  = getFieldStrings  flds [] "c-sources"
-      dataPrefix = makeDataPrefix env glob sect
+installCFiles env glob (Section _ _ flds) = do
+  let cs = getFieldStrings flds [] "c-sources"
+      dataPrefix = makeDataPrefix env glob
       cDir  = dataPrefix </> "cbits"
-  case gcs ++ cs of
+  case cs of
     [] -> return ()
     files -> do
       message env 1 $ "Installing C files " ++ unwords files
