@@ -440,20 +440,21 @@ parsers =
   , "name"                           # (VItem <$> pItem)
   , "package-url"                    # (VItem <$> pItem)
   , "stability"                      # pFreeText
-  , "subdir"                         # (VItem <$> pItem)
   , "synopsis"                       # pFreeTextX
   , "tested-with"                    # pVLibs
   , "version"                        # (VVersion <$> pVersion)
   -- test suite fields
   , "main-is"                        # (VItem <$> pItem)
   , "test-module"                    # (VItem <$> pItem)
-  , "type"                           # (VItem <$> pItem)
   -- source-repository fields
   , "location"                       # (VItem <$> pItem)
+  , "module"                         # (VItem <$> pItem)
+  , "branch"                         # (VItem <$> pItem)
+  , "tag"                            # (VItem <$> pItem)
+  , "subdir"                         # (VItem <$> pItem)
   -- flag fields
   , "manual"                         # (VBool <$> pBoolNL)
   , "default"                        # (VBool <$> pBoolNL)
-  , "tag"                            # pFreeText
   ]
   where ( # ) = (,)
   -- XXX use local fixity

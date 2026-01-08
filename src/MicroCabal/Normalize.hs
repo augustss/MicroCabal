@@ -51,9 +51,9 @@ libName (Cabal (g@(Section _ _ gs):ss)) = Cabal $ g : map set ss
 reduce :: FlagInfo -> Cabal -> Cabal
 reduce info c = reduce' (addFlags c) c
   where addFlags (Cabal ss) = info{ flags = flags info ++ concatMap sect ss }
-        sect (Section "flag" n fs) = [(n', dflt n' fs)]  where n' = map toLower n
+        sect (Section "flag" n fs) = [(map toLower n, dflt fs)]
         sect _ = []
-        dflt n fs = head $ [ b | Field "default" (VBool b) <- fs ] ++ [error $ "no default for flag " ++ show n]
+        dflt fs = head $ [ b | Field "default" (VBool b) <- fs ] ++ [True]
 
 reduce' :: FlagInfo -> Cabal -> Cabal
 reduce' info = mapField red
