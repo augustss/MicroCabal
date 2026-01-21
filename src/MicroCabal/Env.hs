@@ -22,6 +22,7 @@ data Env = Env {
   backend    :: Backend,            -- which compiler to use, default is MHS
   targets    :: [Target],           -- only build/install these
   gitRepo    :: Maybe String,       -- use git repo for package
+  gitRef     :: Maybe String,       -- use git ref when cloning 'gitRepo'
   subDir     :: Maybe String        -- subdirectory of git repo
   }
 
