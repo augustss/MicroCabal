@@ -1,7 +1,7 @@
 module MicroCabal.Unix(
   cmd, tryCmd, cmdOut, tryCmdOut,
   mkdir,
-  wget, URL(..),
+  wget, URL(..), GitRef(..),
   gitClone,
   tarx,
   rmrf,
@@ -20,6 +20,8 @@ import System.Process(callCommand)
 import MicroCabal.Env
 
 newtype URL = URL String
+
+newtype GitRef = GitRef String
 
 cmd :: Env -> String -> IO ()
 cmd env s = do
@@ -111,8 +113,10 @@ preserveCurrentDirectory io = do
   setCurrentDirectory cwd
   return a
 
-gitClone :: Env -> FilePath -> URL -> IO ()
-gitClone env dir (URL repo) =
+gitClone :: Env -> FilePath -> URL -> Maybe GitRef -> IO ()
+gitClone env dir (URL repo) (Just (GitRef ref)) =
+  cmd env $ "git clone --depth 1 --branch " ++ ref ++ " --quiet " ++ repo ++ " " ++ dir
+gitClone env dir (URL repo) Nothing =
   cmd env $ "git clone --depth 1 --quiet " ++ repo ++ " " ++ dir
 
 -----

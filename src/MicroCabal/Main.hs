@@ -46,7 +46,7 @@ setupEnv = do
   let cdir = fromMaybe (home </> ".mcabal") cdirm
       env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, eflags = [],
                  backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtFor, TgtExe],
-                 gitRepo = Nothing, dryRun = False, useNightly = True, subDir = Nothing }
+                 gitRepo = Nothing, gitRef = Nothing, dryRun = False, useNightly = True, subDir = Nothing }
   be <- mhsBackend env
   return env{ backend = be }
 
@@ -228,7 +228,7 @@ cmdFetch env [pkg] = do
       -- Doing a git fetch.
       -- With --git we will always fetch, blowing away the old repo.
       message env 1 $ "Fetching from git repo " ++ repo
-      gitClone env pdir (URL repo)
+      gitClone env pdir (URL repo) (GitRef <$> gitRef env)
 cmdFetch _ _ = usage
 
 -----------------------------------------
@@ -385,6 +385,7 @@ addMissing sects = sects
 
 decodeGit :: (Env -> [String] -> IO ()) -> Env -> [String] -> IO ()
 decodeGit io env (arg:args) | repo@(Just _) <- stripPrefix "--git=" arg = decodeGit io (env{ gitRepo = repo }) args
+decodeGit io env (arg:args) |  ref@(Just _) <- stripPrefix "--git-ref=" arg = decodeGit io (env{ gitRef = ref }) args
 decodeGit io env (arg:args) |  dir@(Just _) <- stripPrefix "--dir=" arg = decodeGit io (env{ subDir  = dir  }) args
 decodeGit io env args = io env args
 
@@ -473,14 +474,14 @@ installCFiles env glob (Section _ _ flds) = do
 cmdHelp :: Env -> [String] -> IO ()
 cmdHelp _ _ = putStrLn "\
   \Available commands:\n\
-  \  mcabal [FLAGS] build [--git=URL [--dir=DIR]] [PKG]    build in current directory, or the package PKG\n\
-  \  mcabal [FLAGS] test                                   build and run tests in current directory\n\
-  \  mcabal [FLAGS] clean                                  clean in the current directory\n\
-  \  mcabal [FLAGS] fetch [--git=URL [--dir=DIR]] PKG      fetch files for package PKG\n\
-  \  mcabal [FLAGS] help                                   show this message\n\
-  \  mcabal [FLAGS] install [--git=URL [--dir=DIR]] [PKG]  build and install in current directory, or the package PKG\n\
-  \  mcabal [FLAGS] parse FILE                             just parse a Cabal file (for debugging)\n\
-  \  mcabal [FLAGS] update                                 retrieve new set of consistent packages from Stackage\n\
+  \  mcabal [FLAGS] build [--git=URL [--gitRef=REF] [--dir=DIR]] [PKG]    build in current directory, or the package PKG\n\
+  \  mcabal [FLAGS] test                                                  build and run tests in current directory\n\
+  \  mcabal [FLAGS] clean                                                 clean in the current directory\n\
+  \  mcabal [FLAGS] fetch [--git=URL [--dir=DIR]] PKG                     fetch files for package PKG\n\
+  \  mcabal [FLAGS] help                                                  show this message\n\
+  \  mcabal [FLAGS] install [--git=URL [--dir=DIR]] [PKG]                 build and install in current directory, or the package PKG\n\
+  \  mcabal [FLAGS] parse FILE                                            just parse a Cabal file (for debugging)\n\
+  \  mcabal [FLAGS] update                                                retrieve new set of consistent packages from Stackage\n\
   \\n\
   \Flags:\n\
   \  --version                     show version\n\
