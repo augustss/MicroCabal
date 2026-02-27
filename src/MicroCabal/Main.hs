@@ -168,10 +168,10 @@ distPkgs =
   , StackagePackage "containers"   (makeVersion [0,8])        False []
 --  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
   , StackagePackage "exceptions"   (makeVersion [0,10,11])    False []
-  , StackagePackage "filepath"     (makeVersion [1,5,4,0])    False []
+  , StackagePackage "filepath"     (makeVersion [1,5,5,0])    False []
   , StackagePackage "ghc-compat"   (makeVersion [0,5,5,0])    False []
   , StackagePackage "mtl"          (makeVersion [2,3,2])      False []
-  , StackagePackage "os-string"    (makeVersion [2,0,7])      False []
+  , StackagePackage "os-string"    (makeVersion [2,0,10])     False []
   , StackagePackage "parsec"       (makeVersion [3,1,18,0])   False []
   , StackagePackage "pretty"       (makeVersion [1,1,3,6])    False []
   , StackagePackage "terminfo"     (makeVersion [0,4,1,7])    False []
