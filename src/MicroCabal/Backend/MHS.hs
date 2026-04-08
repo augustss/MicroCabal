@@ -240,7 +240,7 @@ mhsPatchName _ nv = nv
 mhsPackages :: [(Name, (Name, Version))]
 mhsPackages =
   [ ("array",  ("array-mhs",  makeVersion [0,5,8,0]))
-  , ("random", ("random-mhs", makeVersion [1,3,2,1]))
+  , ("random", ("random-mhs", makeVersion [1,3,2,2]))
   ]
 
 -- Temporary hack: undo dependency patching
