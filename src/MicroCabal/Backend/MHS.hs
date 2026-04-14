@@ -112,6 +112,7 @@ setupStdArgs env flds = do
     map ("-X" ++) exts' ++
     map ("-I" ++) incs ++
     opts ++
+    compOptions env ++
     macros ++
     cppOpts
 

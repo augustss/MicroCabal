@@ -46,7 +46,7 @@ setupEnv = do
   let cdir = fromMaybe (home </> ".mcabal") cdirm
       env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, eflags = [],
                  backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtFor, TgtExe],
-                 gitRepo = Nothing, gitRef = Nothing, dryRun = False, useNightly = True, subDir = Nothing }
+                 gitRepo = Nothing, gitRef = Nothing, dryRun = False, useNightly = True, subDir = Nothing, compOptions = [] }
   be <- mhsBackend env
   return env{ backend = be }
 
@@ -56,11 +56,13 @@ decodeCommonArgs env = do
       loop e ("-q"           : as) = loop e{ verbose = -1 } as
       loop e ("-r"           : as) = loop e{ recursive = True } as
       loop e (('-':'f':s)    : as) = loop e{ eflags = decodeCabalFlags s ++ eflags e } as
+      loop e (('-':'C':s)    : as) = loop e{ cabalDir = s } as
       loop e ("--ghc"        : as) = do be <- ghcBackend env; loop e{ backend = be } as
       loop e ("--mhs"        : as) = do be <- mhsBackend env; loop e{ backend = be } as
       loop e ("--dry-run"    : as) = loop e{ dryRun = True } as
       loop e ("--nightly"    : as) = loop e{ useNightly = True } as
       loop e ("--no-nightly" : as) = loop e{ useNightly = False } as
+      loop e (('-':'-':'o':'p':'t':'i':'o':'n':'s':'=':r) : as) = loop e{ compOptions = compOptions e ++ [r] } as
       loop e as = return (e, as)
   loop env =<< getArgs
 
