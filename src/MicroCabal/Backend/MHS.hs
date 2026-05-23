@@ -42,14 +42,12 @@ mhsNameVers env = do
 getMhsDir :: Env -> IO FilePath
 getMhsDir env = do
   (n, v) <- mhsNameVers env
-  return $ instDir env ++ "/" ++ n ++ "-" ++ showVersion v
+  return $ instDir env </> n ++ "-" ++ showVersion v
 
 initDB :: Env -> IO ()
 initDB env = do
-  dir <- getMhsDir env
-  b <- doesDirectoryExist dir
-  when (not b) $ do
-    mkdir env (dir </> "packages")
+  dir <- (</> "packages") <$>getMhsDir env
+  mkdir env dir 
 
 -- Check for existence of a package by doing 'mhs -Lpkg'.
 mhsExists :: Env -> PackageName -> IO Bool
@@ -209,7 +207,8 @@ mhsInstallLib env (Section _ _ glob) (Section _ name _) = do
   initDB env
   let vers = getVersion glob "version"
       namever = distDir env ++ "/" ++ name ++ "-" ++ showVersion vers
-  mhs env $ "-Q " ++ namever ++ ".pkg " ++ instDir env
+  dir <- getMhsDir env
+  mhs env $ "-Q " ++ namever ++ ".pkg " ++ dir
 
 ---
 
