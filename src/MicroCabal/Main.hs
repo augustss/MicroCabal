@@ -26,6 +26,10 @@ version = "MicroCabal 0.5.8.1"
 main :: IO ()
 main = do
   (env, args) <- decodeCommonArgs =<< setupEnv
+
+  when (verbose env > 0) $
+    putStrLn $ "Env=" ++ show env
+
   case args of
     [] -> usage
     ["--version"]  -> putStrLn version
@@ -44,7 +48,7 @@ setupEnv = do
   cdirm <- lookupEnv "CABALDIR"
   home <- getEnv "HOME"
   let cdir = fromMaybe (home </> ".mcabal") cdirm
-      env = Env{ cabalDir = cdir, distDir = "dist-mcabal", verbose = 0, depth = 0, eflags = [],
+      env = Env{ instDir = cdir, distDir = "dist-mcabal", pkgPath = Nothing, verbose = 0, depth = 0, eflags = [],
                  backend = error "backend undefined", recursive = False, targets = [TgtLib, TgtFor, TgtExe],
                  gitRepo = Nothing, gitRef = Nothing, dryRun = False, useNightly = True, subDir = Nothing, compOptions = [] }
   be <- mhsBackend env
@@ -56,13 +60,18 @@ decodeCommonArgs env = do
       loop e ("-q"           : as) = loop e{ verbose = -1 } as
       loop e ("-r"           : as) = loop e{ recursive = True } as
       loop e (('-':'f':s)    : as) = loop e{ eflags = decodeCabalFlags s ++ eflags e } as
-      loop e (('-':'C':s)    : as) = loop e{ cabalDir = s } as
+      loop e (('-':'C':s)    : as) = loop e{ instDir = s } as
+      loop e ("-a"           : as) = loop e{ pkgPath = Nothing } as
+      loop e (('-':'a':s)    : as) = loop e{ pkgPath = Just $ maybe s (++ (':' : s)) (pkgPath e) } as
       loop e ("--ghc"        : as) = do be <- ghcBackend env; loop e{ backend = be } as
       loop e ("--mhs"        : as) = do be <- mhsBackend env; loop e{ backend = be } as
       loop e ("--dry-run"    : as) = loop e{ dryRun = True } as
       loop e ("--nightly"    : as) = loop e{ useNightly = True } as
       loop e ("--no-nightly" : as) = loop e{ useNightly = False } as
-      loop e (('-':'-':'o':'p':'t':'i':'o':'n':'s':'=':r) : as) = loop e{ compOptions = compOptions e ++ [r] } as
+      loop e (a              : as) | Just r <- stripPrefix "--options=" a
+                                   = loop e{ compOptions = compOptions e ++ [r] } as
+                                   | Just r <- stripPrefix "--install=" a
+                                   = loop e{ instDir = r } as
       loop e as = return (e, as)
   loop env =<< getArgs
 
@@ -107,7 +116,7 @@ snapshotSource = "https://raw.githubusercontent.com/commercialhaskell/stackage-s
 getBestStackage :: Env -> IO URL
 getBestStackage env = do
   -- Get source list
-  let dir = cabalDir env
+  let dir = instDir env
       fsnaps = dir </> snapshotsName
   wget env stackageSourceList fsnaps
   file <- readFile fsnaps
@@ -134,7 +143,7 @@ getBestStackage env = do
 cmdUpdate :: Env -> [String] -> IO ()
 cmdUpdate env [] = do
   message env 0 "Retrieving Stackage package list"
-  let dir = cabalDir env
+  let dir = instDir env
       stk = dir </> snapshotName
       fpkgs = dir </> packageListName
   mkdir env dir
@@ -190,7 +199,7 @@ hackageSrcURL = "https://hackage.haskell.org/package/"
 
 getPackageList :: Env -> IO [StackagePackage]
 getPackageList env = do
-  let dir = cabalDir env
+  let dir = instDir env
       fpkgs = dir </> packageListName
   b <- doesFileExist fpkgs
   when (not b) $ do
@@ -204,7 +213,7 @@ getPackageInfo env pkg = do
   return $ fromMaybe (error $ "getPackageInfo: no package " ++ pkg) $ listToMaybe $ filter ((== pkg) . stName) pkgs
 
 dirPackage :: Env -> FilePath
-dirPackage env = cabalDir env </> "packages"
+dirPackage env = instDir env </> "packages"
 
 dirForPackage :: Env -> StackagePackage -> FilePath
 dirForPackage env st = dirPackage env </> stName st ++ "-" ++ showVersion (stVersion st)
@@ -273,7 +282,7 @@ makeDataPrefix env (Section _ _ glob) =
   let name = getFieldString glob "name"
       vers = getVersion glob "version"
       pkgVers = name ++ "-" ++ showVersion vers
-      dataPrefix = cabalDir env </> compiler (backend env) </> "packages" </> pkgVers
+      dataPrefix = instDir env </> compiler (backend env) </> "packages" </> pkgVers
   in  dataPrefix
 
 createPathFile :: Env -> Section -> IO ()
@@ -496,8 +505,10 @@ cmdHelp _ _ = putStrLn "\
   \  --git=URL                     fetch from the Git repo instead of hackage\n\
   \  --dry-run                     do NOT execute the commands, just print\n\
   \  --no-nightly                  use latest versioned snapshot from stackage instead of nightly\n\
+  \  --options=OPTIONS             set compiler options\n\
+  \  --install=DIR                 set the installation directory\n\
   \\n\
-  \Installs go to $CABALDIR if set, otherwise $HOME/.mcabal.\n\
+  \If no directory is given, installs go to $CABALDIR if set, otherwise $HOME/.mcabal.\n\
   \"
 
 -----------------------------------------

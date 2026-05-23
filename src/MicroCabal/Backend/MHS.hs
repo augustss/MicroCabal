@@ -1,6 +1,6 @@
 module MicroCabal.Backend.MHS(mhsBackend) where
 import Control.Monad
-import Data.List(dropWhileEnd, (\\), stripPrefix)
+import Data.List((\\), stripPrefix)
 import Data.Maybe
 import Data.Version
 import System.Directory
@@ -42,7 +42,7 @@ mhsNameVers env = do
 getMhsDir :: Env -> IO FilePath
 getMhsDir env = do
   (n, v) <- mhsNameVers env
-  return $ cabalDir env ++ "/" ++ n ++ "-" ++ showVersion v
+  return $ instDir env ++ "/" ++ n ++ "-" ++ showVersion v
 
 initDB :: Env -> IO ()
 initDB env = do
@@ -51,17 +51,14 @@ initDB env = do
   when (not b) $ do
     mkdir env (dir </> "packages")
 
+-- Check for existence of a package by doing 'mhs -Lpkg'.
 mhsExists :: Env -> PackageName -> IO Bool
-mhsExists _ pkgname | Just _ <- lookup pkgname builtinPackages = return True
-mhsExists env pkgname = do
-  initDB env
-  dir <- getMhsDir env
-  pkgs <- listDirectory $ dir </> "packages"
-  return $ any ((== pkgname) . init . dropWhileEnd (/= '-')) pkgs
-
+mhsExists _ pkgName | Just _ <- lookup pkgName builtinPackages = return True
+mhsExists env pkgName = isJust <$> getPackageVersionM env pkgName
+  
 -- XXX These packages are part of mhs.
--- The version numbers are totally fake.
--- The version numbers are from GHC 9.8.2
+-- The version numbers are totally fake;
+-- they are from GHC.
 builtinPackages :: [(String, Version)]
 builtinPackages = [
 --  ("array",     makeVersion [0,5,6,0]),  has its own package
@@ -77,19 +74,19 @@ builtinPackages = [
   ]
 
 getPackageVersion :: Env -> String -> IO Version
-getPackageVersion _ pkgName | Just v <- lookup pkgName builtinPackages = return v
-getPackageVersion env pkgName = do
-  dir <- getMhsDir env
-  pkgs <- listDirectory (dir </> "packages")
-  let n = pkgName ++ "-"
-  case [ v | p <- pkgs,
-             Just verspkg <- [stripPrefix n p],
-             Just vers <- [stripSuffix ".pkg" verspkg],
-             Just v <- [readVersionM vers]
-       ] of
-    []  -> error $ "Not installed: " ++ pkgName
-    [v] -> return v
-    vs  -> error $ "Multiple version: " ++ pkgName ++ show vs
+getPackageVersion env pkgName =
+  fromMaybe (error $ "Not installed: " ++ pkgName) <$> getPackageVersionM env pkgName
+
+getPackageVersionM :: Env -> String -> IO (Maybe Version)
+getPackageVersionM _ pkgName | Just v <- lookup pkgName builtinPackages = return (Just v)
+getPackageVersionM env pkgName = do
+  mdesc <- tryCmdOut env (mhsFlags env ++ " -L" ++ pkgName)
+  case mdesc of
+    Nothing -> return Nothing
+    Just desc ->
+      case [ v | l <- lines desc, Just sv <- [stripPrefix "version: " l], Just v <- [readVersionM sv] ] of
+        [v] -> return (Just v)
+        _   -> error "getPackageVersionM: parse error"
 
 setupStdArgs :: Env -> [Field] -> IO [String]
 setupStdArgs env flds = do
@@ -138,14 +135,17 @@ mhsBuildExe env (Section _ _ gflds) (Section _ name flds) = do
   mhs env args
   return bin
 
+mhsFlags :: Env -> String
+mhsFlags env = compilerExe (backend env) ++ maybe "" (\ p -> " -a'" ++ p ++ "'") (pkgPath env)
+
 mhs :: Env -> String -> IO ()
 mhs env args = do
   let flg = if verbose env == 1 then "-l " else if verbose env > 1 then "-v " else ""
-  cmd env $ compilerExe (backend env) ++ " " ++ flg ++ args
+  cmd env $ mhsFlags env ++ " " ++ flg ++ args
 
 mhsOut :: Env -> String -> IO String
 mhsOut env args =
-  cmdOut env $ compilerExe (backend env) ++ " " ++ args
+  cmdOut env $ mhsFlags env ++ " " ++ args
 
 findMainIs :: Env -> [FilePath] -> FilePath -> IO FilePath
 findMainIs _ [] fn = error $ "cannot find " ++ show fn
@@ -200,7 +200,7 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
 mhsInstallExe :: Env -> Section -> Section -> IO ()
 mhsInstallExe env (Section _ _ _glob) (Section _ name _) = do
   let bin = distDir env </> binMhs </> name
-      binDir = cabalDir env </> "bin"
+      binDir = instDir env </> "bin"
   mkdir env binDir
   cpr env bin (binDir </> name)
 
@@ -209,12 +209,9 @@ mhsInstallLib env (Section _ _ glob) (Section _ name _) = do
   initDB env
   let vers = getVersion glob "version"
       namever = distDir env ++ "/" ++ name ++ "-" ++ showVersion vers
-  mhs env $ "-Q " ++ namever ++ ".pkg"
+  mhs env $ "-Q " ++ namever ++ ".pkg " ++ instDir env
 
 ---
--- XXX
-stripSuffix :: String -> String -> Maybe String
-stripSuffix suf str = reverse <$> stripPrefix (reverse suf) (reverse str)
 
 -- Update build-depends for packages that have a special mhs version, also add ghc-compat.
 mhsPatchDepends :: Env -> Cabal -> Cabal
@@ -231,7 +228,7 @@ mhsPatchDepends env cbl@(Cabal sects) = Cabal (map patchSect sects)
 mhsExtraPkgs :: Cabal -> [(Item, [Item], Maybe VersionRange)]
 mhsExtraPkgs cbl | forMhs (getCabalName cbl) = []
                  | otherwise = [ ("ghc-compat", [], Nothing) ]
-  where forMhs n = n `elem` ["base", "ghc-compat", "MicroHs", "MicroCabal"]
+  where forMhs n = n `elem` ["base", "ghc-compat", "MicroHs", "MicroCabal", "canvhs"]
 
 mhsPatchName :: Env -> (Name, Version) -> (Name, Version)
 mhsPatchName env (n, _) | Just nv <- lookup n mhsPackages =

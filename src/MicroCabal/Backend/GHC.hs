@@ -18,7 +18,7 @@ ghcBackend env = do
   -- Actual GHC version.
   numVersion <- takeWhile (/= '\n') <$> cmdOut env (exe ++ " --numeric-version")
   -- GHC version used in the stackage snapshot.
-  snapVersion <- readFile (cabalDir env </> "ghc-version")
+  snapVersion <- readFile (instDir env </> "ghc-version")
   let ghcVersion = "ghc-" ++ numVersion
       version = readVersion numVersion
   -- Check that the ghc version is the one that the Stackage snapshot wants.
@@ -44,7 +44,7 @@ getGhcName :: Env -> IO FilePath
 getGhcName env = return $ compiler $ backend env
 
 getGhcDir :: Env -> IO FilePath
-getGhcDir env = (cabalDir env </>) <$> getGhcName env
+getGhcDir env = (instDir env </>) <$> getGhcName env
 
 getBuildDir :: Env -> IO FilePath
 getBuildDir env = do
@@ -160,7 +160,7 @@ ghcBuildLib env (Section _ _ glob) (Section _ name flds) = do
 ghcInstallExe :: Env -> Section -> Section -> IO ()
 ghcInstallExe env (Section _ _ _glob) (Section _ name _) = do
   let bin = distDir env ++ binGhc ++ name
-      binDir = cabalDir env </> "bin"
+      binDir = instDir env </> "bin"
   mkdir env binDir
   cpr env bin (binDir </> name)
 

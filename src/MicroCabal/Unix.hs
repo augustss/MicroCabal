@@ -11,7 +11,6 @@ module MicroCabal.Unix(
   (</>),
   ) where
 import Control.Exception
-import Control.Monad
 import Data.Maybe
 import System.Directory
 import System.Environment
@@ -49,7 +48,7 @@ tryCmdOut :: Env -> String -> IO (Maybe String)
 tryCmdOut env s = do
   (fn, h) <- tmpFile
   hClose h
-  b <- tryCmd env $ s ++ " >" ++ fn
+  b <- tryCmd env $ s ++ " >" ++ fn ++ " 2>/dev/null"
   if b then do
     o <- readFile fn
     removeFile fn

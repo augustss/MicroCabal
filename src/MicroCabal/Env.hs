@@ -11,8 +11,9 @@ import MicroCabal.Cabal
 import MicroCabal.StackageList(PackageName)
 
 data Env = Env {
-  cabalDir   :: FilePath,           -- where to install, default is $HOME/.mcabal
+  instDir    :: FilePath,           -- where to install, default is $HOME/.mcabal
   distDir    :: FilePath,           -- where to build, default is dist-mcabal
+  pkgPath    :: Maybe String,       -- package lookup path
   verbose    :: Int,                -- how chatty, default is 0, -1=say nothing, 0=minimal messages, 1=debug info
   depth      :: Int,                -- nesting depth for recursive builds, default is 0
   recursive  :: Bool,               -- do recursive builds, default is False
@@ -26,9 +27,10 @@ data Env = Env {
   subDir     :: Maybe String,       -- subdirectory of git repo
   compOptions:: [String]            -- extra compiler options
   }
+  deriving (Show)
 
 data Target = TgtLib | TgtFor | TgtExe | TgtTst
-  deriving (Eq)
+  deriving (Eq, Show)
 
 data Backend = Backend {
   compilerName   :: String,                                 -- just the name, e.g., "ghc", "mhs"
@@ -44,6 +46,9 @@ data Backend = Backend {
   installPkgExe  :: Env -> Section -> Section -> IO (),     -- install the package from the current directory
   installPkgLib  :: Env -> Section -> Section -> IO ()      -- install the package from the current directory
   }
+
+instance Show Backend where
+  show b = "Backend-" ++ compiler b
 
 backendNameVers :: Backend -> (String, Version)
 backendNameVers b = (compilerName b, compilerVersion b)
