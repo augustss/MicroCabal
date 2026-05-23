@@ -1,6 +1,6 @@
 cabal-version:         3.0
 name:                  MicroCabal
-version:               0.5.8.1
+version:               0.5.9.0
                        -- Update src/MicroCabal/Main.hs with version
 synopsis:              A partial Cabal replacement
 license:               Apache-2.0
