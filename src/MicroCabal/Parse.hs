@@ -401,7 +401,7 @@ parsers =
   , "ghcjs-prof-options"             # pVSpace
   , "ghcjs-shared-options"           # pVSpace
   , "hs-source-dirs"                 # pVOptComma
-  , "import"                         # (VItem <$> pItem)
+  , "import"                         # pVOptComma
   , "include-dirs"                   # pVOptComma
   , "includes"                       # pVOptComma
   , "install-includes"               # pVOptComma

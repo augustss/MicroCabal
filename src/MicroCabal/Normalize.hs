@@ -38,7 +38,8 @@ inline (Cabal ss) = Cabal (map sect nss)
   where (css, nss) = partition (\ (Section s _ _) -> s == "common") ss
         coms = [ (n, fs) | Section _ n fs <- css ]
         sect (Section s n fs) = Section s n $ concatMap inl fs
-        inl (Field "import" (VItem n)) = fromMaybe (error $ "No common " ++ show n) $ lookup n coms
+        inl (Field "import" (VItems ns)) =
+          concatMap (\ n -> fromMaybe (error $ "No common " ++ show n) $ lookup n coms) ns
         inl f = [f]
 
 libName :: Cabal -> Cabal
