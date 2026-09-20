@@ -433,6 +433,7 @@ installExe env glob sect@(Section _ name _) = do
   message env 0 $ "Installing executable " ++ name
   installIncludeFiles env glob sect
   installCFiles env glob sect
+  installJSFiles env glob sect
   installPkgExe (backend env) env glob sect
 
 installLib :: Env -> Section -> Section -> IO ()
@@ -440,6 +441,7 @@ installLib env glob sect@(Section _ name _) = do
   message env 0 $ "Installing library " ++ name
   installIncludeFiles env glob sect
   installCFiles env glob sect
+  installJSFiles env glob sect
   installPkgLib (backend env) env glob sect
 
 installDataFiles :: Env -> Section -> IO ()
@@ -469,6 +471,20 @@ installIncludeFiles env glob (Section _ _ flds) = do
       message env 1 $ "Installing include files " ++ unwords files
       mkdir env incDir
       copyFiles env inc files incDir
+
+-- js-sources are copied to the jsbits directory of the package,
+-- mhs embeds them in the output for targets that support it (e.g., emscripten).
+installJSFiles :: Env -> Section -> Section -> IO ()
+installJSFiles env glob (Section _ _ flds) = do
+  let js = getFieldStrings flds [] "js-sources"
+      dataPrefix = makeDataPrefix env glob
+      jsDir  = dataPrefix </> "jsbits"
+  case js of
+    [] -> return ()
+    files -> do
+      message env 1 $ "Installing JavaScript files " ++ unwords files
+      mkdir env jsDir
+      mapM_ (\ f -> cp env f jsDir) files
 
 installCFiles :: Env -> Section -> Section -> IO ()
 installCFiles env glob (Section _ _ flds) = do

@@ -123,11 +123,16 @@ mhsBuildExe env (Section _ _ gflds) (Section _ name flds) = do
       gcs = getFieldStrings gflds [] "c-sources"
       cs  = getFieldStrings  flds [] "c-sources"
       csrc = gcs ++ cs
+      -- js-sources are embedded by mhs for targets that support it
+      gjs = getFieldStrings gflds [] "js-sources"
+      js  = getFieldStrings  flds [] "js-sources"
+      jsrc = concatMap (\ f -> ["-js", f]) (gjs ++ js)
   mkdir env $ distDir env </> binMhs
   mainIs' <- findMainIs env srcDirs mainIs
   stdArgs <- setupStdArgs env flds
   let args    = unwords $ stdArgs ++
                           csrc ++
+                          jsrc ++
                           ["-z", "-a.","-o" ++ bin, mainIs']
   message env 0 $ "Build " ++ bin ++ " with mhs"
   mhs env args
