@@ -126,7 +126,7 @@ mhsBuildExe env (Section _ _ gflds) (Section _ name flds) = do
       -- js-sources are embedded by mhs for targets that support it
       gjs = getFieldStrings gflds [] "js-sources"
       js  = getFieldStrings  flds [] "js-sources"
-      jsrc = concatMap (\ f -> ["-js", f]) (gjs ++ js)
+      jsrc = gjs ++ js
   mkdir env $ distDir env </> binMhs
   mainIs' <- findMainIs env srcDirs mainIs
   stdArgs <- setupStdArgs env flds
