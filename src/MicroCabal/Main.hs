@@ -176,7 +176,7 @@ distPkgs :: [StackagePackage]
 distPkgs =
   [ StackagePackage "array"        (makeVersion [0,5,8,0])    False []
   , StackagePackage "binary"       (makeVersion [0,8,9,3])    False []
-  , StackagePackage "containers"   (makeVersion [0,8])        False []
+  , StackagePackage "containers"   (makeVersion [0,8,1])      False []
 --  , StackagePackage "deepseq"      (makeVersion [1,6,0,0])  False []  -- built in
   , StackagePackage "exceptions"   (makeVersion [0,10,11])    False []
   , StackagePackage "filepath"     (makeVersion [1,5,5,0])    False []
