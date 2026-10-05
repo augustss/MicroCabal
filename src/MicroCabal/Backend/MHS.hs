@@ -36,7 +36,8 @@ mhsBackend env = do
 
 mhsNameVers :: Env -> IO (String, Version)
 mhsNameVers env = do
-  v <- readVersion . takeWhile (/= '\n') <$> mhsOut env "--numeric-version"
+  -- Without the package path flags: --numeric-version must be the only argument.
+  v <- readVersion . takeWhile (/= '\n') <$> cmdOut env (compilerExe (backend env) ++ " --numeric-version")
   return ("mhs", v)
 
 getMhsDir :: Env -> IO FilePath
