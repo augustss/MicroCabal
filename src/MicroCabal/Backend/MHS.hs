@@ -130,10 +130,11 @@ mhsBuildExe env (Section _ _ gflds) (Section _ name flds) = do
   mkdir env $ distDir env </> binMhs
   mainIs' <- findMainIs env srcDirs mainIs
   stdArgs <- setupStdArgs env flds
+  mhsDir <- getMhsDir env
   let args    = unwords $ stdArgs ++
                           csrc ++
                           jsrc ++
-                          ["-z", "-a.","-o" ++ bin, mainIs']
+                          ["-z", "-a"++mhsDir,"-o" ++ bin, mainIs']
   message env 0 $ "Build " ++ bin ++ " with mhs"
   mhs env args
   return bin
@@ -175,6 +176,7 @@ mhsBuildLib :: Env -> Section -> Section -> IO ()
 mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
   initDB env
   stdArgs <- setupStdArgs env flds
+  mhsDir <- getMhsDir env
   let mdls = getFieldStrings flds [] "exposed-modules"
       omdls = getFieldStrings flds [] "other-modules"
       vers = getVersion glob "version"
@@ -187,7 +189,7 @@ mhsBuildLib env (Section _ _ glob) (Section _ name flds) = do
                        ["-P" ++ namever,
                         "-o" ++ pkgfn] ++
                        stdArgs ++
-                       ["-a."] ++
+                       ["-a" ++ mhsDir] ++
                        mdls
       isMdl (' ':_) = True   -- Relies on -L output format
       isMdl _ = False
