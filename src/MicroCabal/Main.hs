@@ -191,7 +191,7 @@ distPkgs =
   , StackagePackage "unix"         (makeVersion [2,8,7,0])    False []
   , StackagePackage "xhtml"        (makeVersion [3000,2,2,1]) False []
 -- 
-  , StackagePackage "canvhs"       (makeVersion [0,2,0,1])    False []
+  , StackagePackage "canvhs"       (makeVersion [0,2,2,0])    False []
   ]
 
 -----------------------------------------
